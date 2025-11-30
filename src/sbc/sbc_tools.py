@@ -103,9 +103,9 @@ def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
 
     fig, ax = plt.subplots(figsize=(10, 5), ncols=3)
 
-    plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title="Histogram", ax=ax[0])
-    plot_sbc_ecdf(ranks, N_iter=1000, N_samp=250, alpha=alpha, title=f"ECDF with {100*(1-alpha)}% interval", ax=ax[1])
-    plot_sbc_ecdf_diff(ranks, N_iter=1000, N_samp=250, alpha=alpha, title=f"ECDF - x with {100*(1-alpha)}% interval", ax=ax[2])
+    plot_sbc_histogram(ranks, N_iter=N_iter, N_samp=N_samp, title="Histogram", ax=ax[0])
+    plot_sbc_ecdf(ranks, N_iter=N_iter, N_samp=N_samp, alpha=alpha, title=f"ECDF with {100*(1-alpha)}% interval", ax=ax[1])
+    plot_sbc_ecdf_diff(ranks, N_iter=N_iter, N_samp=N_samp, alpha=alpha, title=f"ECDF - x with {100*(1-alpha)}% interval", ax=ax[2])
 
     if title:
         plt.suptitle(title)
@@ -118,7 +118,7 @@ def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
 
 def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100):
     """
-    return unnormalized SBC ranks
+    return normalized SBC ranks
     """
     ranks = []
     for i in range(N_iter):

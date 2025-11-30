@@ -55,7 +55,7 @@ def plot_approximate_posterior(approximate_posterior, prior_pdf, posterior_pdf, 
         ax.plot([-2,2], [0,0], color="blue", linewidth=4, alpha=0.5)
 
         # Plot 2 sigma confidence interval of posterior
-        ax.plot([(x_observed/2 - 2 * 0.5), (x_observed/2 + 2 * 0.5)], [0,0], color="red", linewidth=4, alpha=0.5)
+        ax.plot([(x_observed/2 - 2 * np.sqrt(0.5)), (x_observed/2 + 2 * np.sqrt(0.5))], [0,0], color="red", linewidth=4, alpha=0.5)
 
         # Plot posterior approximation
         ax.plot(theta_range, approximate_posterior(theta_range, x_observed), color="green", label="approximate posterior")
@@ -82,7 +82,7 @@ def plot_approximate_posterior(approximate_posterior, prior_pdf, posterior_pdf, 
             ax[i,j].plot([-2,2], [0,0], color="blue", linewidth=4, alpha=0.5)
 
             # Plot 2 sigma confidence interval of posterior
-            ax[i,j].plot([(x_obs/2 - 2 * 0.5), (x_obs/2 + 2 * 0.5)], [0,0], color="red", linewidth=4, alpha=0.5)
+            ax[i,j].plot([(x_obs/2 - 2 * np.sqrt(0.5)), (x_obs/2 + 2 * np.sqrt(0.5))], [0,0], color="red", linewidth=4, alpha=0.5)
 
             # Plot posterior approximation
             ax[i,j].plot(theta_range, approximate_posterior(theta_range, x_obs), color="green", label="approximate posterior")
@@ -117,7 +117,7 @@ def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, po
         ax.plot([-2,2], [0,0], color="blue", linewidth=4, alpha=0.5)
 
         # Plot 2 sigma confidence interval of posterior
-        ax.plot([(x_observed/2 - 2 * 0.5), (x_observed/2 + 2 * 0.5)], [0,0], color="red", linewidth=4, alpha=0.5)
+        ax.plot([(x_observed/2 - 2 * np.sqrt(0.5)), (x_observed/2 + 2 * np.sqrt(0.5))], [0,0], color="red", linewidth=4, alpha=0.5)
 
 
         # Plot posterior approximation
@@ -144,7 +144,7 @@ def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, po
             ax[i,j].plot([-2,2], [0,0], color="blue", linewidth=4, alpha=0.5)
 
             # Plot 2 sigma confidence interval of posterior
-            ax[i,j].plot([(x_obs/2 - 2 * 0.5), (x_obs/2 + 2 * 0.5)], [0,0], color="red", linewidth=4, alpha=0.5)
+            ax[i,j].plot([(x_obs/2 - 2 * np.sqrt(0.5)), (x_obs/2 + 2 * np.sqrt(0.5))], [0,0], color="red", linewidth=4, alpha=0.5)
 
             # Plot posterior approximation
             ax[i,j].hist(approximate_posterior_samples[k], density=True, color="green", bins=50, label="approximate posterior histogram")
