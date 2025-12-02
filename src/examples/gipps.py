@@ -1,0 +1,137 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+
+
+def one_step_update(af, bf, Vf, tau, ll, psi, vf_prev, xf_prev, vl_prev, xl_prev, bl):
+    """
+    Perform a one-step (i.e one reaction timestep) update on the velocity of the follower
+    """
+    vff = max(0, vf_prev + 2.5 * af * tau * (1 - vf_prev / Vf) * np.sqrt(max(0, 0.025 + vf_prev / Vf)))
+    vcf = max(0, bf * tau + np.sqrt(max(0, bf**2 * tau**2 - bf * (2 * (xl_prev - ll - xf_prev) - vf_prev * tau - (vl_prev**2)/(psi * bl)))))
+    return min(vff, vcf)
+
+
+def follower_trajectory(af, bf, Vf, tau, ll, psi, vf0, xf0, vl, xl, N, bl):
+    """
+    Generate entire follower trajectory (xf, vf) given entire leader 
+    trajectory (xl, vl) and relevant Gipps parameters.
+    """
+    xf = [xf0]
+    vf = [vf0]
+    xf_prev = xf0
+    vf_prev = vf0
+    for step in range(1, N+1):
+        xl_prev = xl[step - 1]
+        vl_prev = vl[step - 1]
+        vf_new = one_step_update(af, bf, Vf, tau, ll, psi, vf_prev, xf_prev, vl_prev, xl_prev, bl)
+        xf_new = xf_prev + tau * (vf_prev + vf_new)/2
+        xf.append(xf_new)
+        vf.append(vf_new)
+        xf_prev = xf_new
+        vf_prev = vf_new
+    return xf, vf
+
+
+def simulate_leader_trajectory(al, bl, Vl, tau, xl0, vl0, N, p_accel, p_brake):
+    """
+    Generate a stochastic leader trajectory that follows the free-flow part of Gipps
+    ODE, but add random accelerating and braking with probabilities p_accel and 
+    p_brake to simulate unpredictable leader behaviour.
+    """
+    xl = [xl0]
+    vl = [vl0]
+    xl_prev = xl0
+    vl_prev = vl0
+    for step in range(1, N+1):
+
+        u = np.random.rand()
+        if u < p_accel:
+            vl_new = max(0, vl_prev + al * tau)
+        elif u < p_accel + p_brake:
+            vl_new = max(0, vl_prev + bl * tau)
+        else:
+            vl_new = max(0, vl_prev + 2.5 * al * tau * (1 - vl_prev / Vl) * np.sqrt(max(0, 0.025 + vl_prev / Vl)))
+        vl.append(vl_new)
+        xl_new = xl_prev + tau * (vl_prev + vl_new)/2
+        xl.append(xl_new)
+        xl_prev = xl_new
+        vl_prev = vl_new
+    return xl, vl
+
+
+def plot_xf_and_xl(xf, xl, tau, N):
+    fig, ax = plt.subplots(figsize=(10,5))
+    t_range = tau * np.arange(0, N+1)
+    ax.plot(t_range, xf, color="blue", label=r"Displacement of follower $x_f$")
+    ax.plot(t_range, xl, color="red", label=r"Displacement of leader $x_l$")
+    ax.set_xlabel(r"Time (s)")
+    ax.set_ylabel("Displacement")
+    if N < 250:
+        ax.set_xticks(t_range, minor=True)
+    plt.legend()
+    plt.show()
+
+def plot_diff_xf_and_xl(xf, xl, tau, N, ll):
+    fig, ax = plt.subplots(figsize=(10,5))
+    t_range = tau * np.arange(0, N+1)
+    ax.plot(t_range, np.array(xl) - np.array(xf) - ll, color="black", label=r"Distance between follower and leader $x_l - x_f - \ell_l$")
+    ax.set_xlabel(r"Time (s)")
+    ax.set_ylabel("Distance between follower and leader")
+    if N < 250:
+        ax.set_xticks(t_range, minor=True)
+    plt.legend()
+    plt.show()
+
+def plot_vf_and_vl(vf, vl, tau, N):
+    fig, ax = plt.subplots(figsize=(10,5))
+    t_range = tau * np.arange(0, N+1)
+    ax.plot(t_range, vf, color="blue", label=r"Velocity of follower $v_f$")
+    ax.plot(t_range, vl, color="red", label=r"Velocity of leader $v_l$")
+    ax.set_xlabel(r"Time (s)")
+    ax.set_ylabel("Velocity")
+    if N < 250:
+        ax.set_xticks(t_range, minor=True)
+    plt.legend()
+    plt.show()
+
+def plot_all(xf, vf, xl, vl, tau, N, ll):
+    fig, ax = plt.subplots(figsize=(10,10), nrows=3, ncols=1)
+    t_range = tau * np.arange(0, N+1)
+
+    ax[0].plot(t_range, xf, color="blue", label=r"Displacement of follower $x_f$")
+    ax[0].plot(t_range, xl, color="red", label=r"Displacement of leader $x_l$")
+    ax[0].set_xlabel(r"Time (s)")
+    ax[0].set_ylabel("Displacement (m)")
+    ax[0].legend()
+
+    ax[1].plot(t_range, np.array(xl) - np.array(xf) - ll, color="black", label=r"Distance between leader and follower $x_l - x_f - \ell_l$")
+    ax[1].set_xlabel(r"Time (s)")
+    ax[1].set_ylabel("Distance between leader and follower (m)")
+    ax[1].legend()
+
+    ax[2].plot(t_range, vf, color="blue", label=r"Velocity of follower $v_f$")
+    ax[2].plot(t_range, vl, color="red", label=r"Velocity of leader $v_l$")
+    ax[2].set_xlabel(r"Time (s)")
+    ax[2].set_ylabel(r"Velocity $(ms^{-1})$")
+    ax[2].legend()
+
+    if N < 250:
+        ax[0].set_xticks(t_range, minor=True)
+        ax[1].set_xticks(t_range, minor=True)
+        ax[2].set_xticks(t_range, minor=True)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def follow_trajectory_stochastic(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, ll, psi, xl, vl, bl):
+    """
+    af, bf, Vf, xv0, vf0 are the BAYESIAN PARAMETERS. 
+    All other arguments are fixed.
+    """
+    xf, vf = follower_trajectory(af, bf, Vf, tau, ll, psi, vf0, xf0, vl, xl, N, bl)
+    xf = torch.tensor(xf) 
+    noise = torch.distributions.MultivariateNormal(mu*torch.ones(N+1), covariance_matrix=sigmasquared*torch.eye(N+1)).sample()
+    return xf + noise, torch.tensor(vf) # Returns torch.tensors
+    
