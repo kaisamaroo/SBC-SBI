@@ -165,6 +165,7 @@ def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, po
             # Plot posterior approximation
             ax[i,j].hist(approximate_posterior_samples[k], density=True, color="green", bins=50, label="approximate posterior histogram", alpha=0.6)
             ax[i,j].set_xlabel(r"$\theta$")
+            ax[i,j].set_title(r"$x_{obs} =$" + f" {x_obs}")
         if title:
             plt.suptitle(title)
         else:
