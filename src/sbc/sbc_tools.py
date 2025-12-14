@@ -132,3 +132,46 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
         ranks.append(float(rank))
     return ranks
+
+
+def sbc_ranks_snpe_a(simulator,
+                         prior,
+                         train_sequential_posterior,
+                         test_function=None,
+                         N_iter=100,
+                         N_samp=100,
+                         num_sequential_rounds=4,
+                         num_simulations_per_round=5000,
+                         show_progress=True):
+    """
+    return normalized SBC ranks for SNPE-A, being careful to account for errors
+    due to non-spd covariance matrices
+    """
+    failed_round_counter = 0
+    ranks = []
+    for i in range(N_iter):
+        if show_progress:
+            print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+        simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+        try:
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round)
+            try:
+                posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+                if test_function:
+                    rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+                else:
+                    # If no test function provided, assume theta is 1D.
+                    rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+                ranks.append(float(rank))
+            except AssertionError:
+                print(f"\n SBC ROUND {i+1} FINAL POSTERIOR NOT SPD! SKIPPING ROUND")
+                ranks.append(np.nan)
+                failed_round_counter += 1
+        except AssertionError:
+            print(f"\n SBC ROUND {i+1} HAD A PROPOSAL PRIOR NOT SPD! SKIPPING ROUND")
+            ranks.append(np.nan)
+            failed_round_counter += 1
+    if show_progress:
+        print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
+    return ranks

@@ -133,7 +133,7 @@ def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, po
         ax.plot(theta_range, posterior_pdf(theta_range, x_observed, sigma), label="posterior with $2\sigma$ region", color="red", linestyle="--")
 
         # Plot 2 sigma confidence interval of posterior
-        post_mean = (sigma**2 / (1 + sigma**2)) * x_obs.item()
+        post_mean = (sigma**2 / (1 + sigma**2)) * x_observed
         post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
         ax.plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
 
@@ -175,32 +175,37 @@ def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, po
     plt.show()
 
 
-def approximate_posterior_quantiles_against_x(approximate_posterior, x_range):
+def approximate_posterior_quantiles_against_x(posterior, x_range, num_samples=5000):
     """
-    Compute the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles of the approximate posterior given x
-    for each x in x_range. Returns a list of 5 lists.
+    Compute 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles of a sampler-based approximate posterior 
+    for each x in x_range. 
+    
+    Returns a list of 5 lists: one list per quantile level.
     """
+
     quantiles = [[],[],[],[],[]]
-    print(len(quantiles))
-    theta_range_for_interpolation = torch.linspace(-100,100,2000).view(-1,1)
     for x in x_range:
-        pdf_vals = approximate_posterior(theta_range_for_interpolation, x * torch.ones_like(theta_range_for_interpolation))
-        cdf_vals = cumulative_trapezoid(pdf_vals.view(-1), theta_range_for_interpolation.view(-1), initial=0)
-        cdf_vals /= cdf_vals[-1]   # normalize just in case
-        InvCDF = interp1d(cdf_vals, theta_range_for_interpolation.view(-1))
-        for i, q in enumerate([InvCDF(0.005), InvCDF(0.125), InvCDF(0.5), InvCDF(0.875), InvCDF(0.995)]):
+        # draw samples
+        samples = posterior.sample((num_samples, ), x=x, show_progress_bars=False)
+        # convert to numpy for quantile computation
+        samples_np = samples.view(-1,1).numpy()
+        # compute requested quantiles
+        quantile_vals = np.quantile(samples_np, [0.005, 0.125, 0.5, 0.875, 0.995])
+        for i, q in enumerate(quantile_vals):
             quantiles[i].append(q)
     return quantiles
 
 
-def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1):
+
+def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
 
     quantiles should be computed using approximate_posterior_quantiles_against_x
     """
-    fig, ax = plt.subplots(figsize=(10,5))
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10,5))
     colors = ["red", "blue", "black", "blue", "red"]
     color_shaded_region = ["red", "blue", "red"]
     levels = [0.005, 0.125, 0.875, 0.995]
@@ -234,9 +239,10 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     ax.set_title(title)
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$\theta$")
-
-    plt.legend()
-    plt.show()
+    if not ax:
+        plt.legend()
+        plt.show()
+    return ax
 
 
 def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1):
