@@ -16,6 +16,6 @@ $$p(x|\theta) = N(x; \theta , 1) \hspace{5mm} \theta \in \mathbb{R}$$
 
 Suppose we observe some data $x_\text{observed} \in \mathbb{R}$. In this case, we have a posterior given analytically by
 
-$$p(\theta|x_\text{obs}) = N\left(\theta; \frac{\sigma^2}{1+\sigma^2} x_\text{observed}, \frac{\sigma^2}{1+\sigma^2}\right)$$
+$$p(\theta|x_\text{observed}) = N\left(\theta; \frac{\sigma^2}{1+\sigma^2} x_\text{observed}, \frac{\sigma^2}{1+\sigma^2}\right)$$
 
 This example aims to mimic what is commonly done in practise where practitioners select very diffuse priors. We hypothesise that it will be hard for SBI to recover a good posterior approximation.
