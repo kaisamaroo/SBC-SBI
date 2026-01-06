@@ -116,12 +116,15 @@ def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
     plt.show()
     return ax
 
-def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100):
+def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False):
     """
     return normalized SBC ranks
     """
     ranks = []
+    print_indices = [(i * N_iter) // 10 for i in range(10)]
     for i in range(N_iter):
+        if show_progress and i in print_indices:
+            print(f"SBC round {i} out of {N_iter} ({100 * i / N_iter}%)")
         prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
         simulated_datapoint = model(prior_sample) # Simulate a datapoint from the model given the prior sample. Returns 1d tensor
         posterior_samples = posterior.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
@@ -131,6 +134,8 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             # If no test function provided, assume theta is 1D.
             rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
         ranks.append(float(rank))
+    if show_progress:
+        print("SBC complete")
     return ranks
 
 
