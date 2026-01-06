@@ -47,6 +47,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
     parser.add_argument("--num_components", type=int, default=1)
-    parser.add_argument("--show_progress", type=bool, default=False)
+    parser.add_argument("--show_progress", type=bool, default=True)
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round, args.num_components, args.show_progress)

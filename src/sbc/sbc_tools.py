@@ -147,7 +147,8 @@ def sbc_ranks_snpe_a(simulator,
                          N_samp=100,
                          num_sequential_rounds=4,
                          num_simulations_per_round=5000,
-                         show_progress=True):
+                         num_components=1,
+                         show_progress=False):
     """
     return normalized SBC ranks for SNPE-A, being careful to account for errors
     due to non-spd covariance matrices
@@ -160,7 +161,7 @@ def sbc_ranks_snpe_a(simulator,
         prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
         simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
         try:
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round)
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, num_components)
             try:
                 posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
                 if test_function:
