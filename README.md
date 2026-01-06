@@ -1,5 +1,12 @@
 Master's project investigating modern simulation-based inference (SBI) methods using simulation-based calibration (SBC).
-$\alpha$
+
+We apply modern SBI methods to a range of examples, consisting of both toy and real-world simulators. See below for a directory of the examples in this repository:
+
+- **norm_norm_diffuse_1d**:
+
+
+
+
 
 We hypothesize that SNPE-A will struggle to provide a good posterior approximation when the prior (or proposal) mass is far from the posterior mass. 
 
