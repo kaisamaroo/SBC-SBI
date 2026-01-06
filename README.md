@@ -2,7 +2,7 @@ Master's project investigating modern simulation-based inference (SBI) methods u
 
 We apply modern SBI methods to a range of examples, consisting of both toy and real-world simulators. See below for a directory of the examples in this repository:
 
-- **norm_norm_diffuse_1d**:
+# **norm_norm_diffuse_1d**:
 
 
 
