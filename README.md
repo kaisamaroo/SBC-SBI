@@ -64,4 +64,4 @@ we can use the difference equation above to simulate the follower trajectory
 
 $$\{(x_f(t), v_f(t)) : t \in \{0, \tau, 2\tau, ..., T-\tau, T\}\}$$
 
-Note that solving the Gipps equation gives the follower velocity time series, but using the approximation $x_f(t + \tau) = x_f(t) + \frac{1}{2} \tau (v_f(t) + v_f(t + \tau))$) we obtain the follower displacement and therefore the full follower trajectory.
+Note that solving the Gipps equation gives the follower velocity time series, but using the approximation $x_f(t + \tau) = x_f(t) + \frac{1}{2} \tau (v_f(t) + v_f(t + \tau)))$ we obtain the follower displacement and therefore the full follower trajectory.
