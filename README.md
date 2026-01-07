@@ -48,12 +48,12 @@ The Gipps model is a differential equation that deterministically defines the di
 
 In applications, the differential equation is discretised to become a difference equation. Interestingly, the discretization gap is chosen to be the driver's reaction time $\tau$, which makes sense intuitively, but makes Bayesian inference on $\tau$ impossible (since $\tau$ is the discretization width of the data, so it must be fixed and cannot be inferred). The difference equation is
 
-$$v_f(t + \tau) = \min\!\big( v_{ff}(t + \tau),\, v_{cf}(t + \tau) \big)$$
+$$v_f(t + \tau) = \min\!\big( v_{ff}(t + \tau)\ v_{cf}(t + \tau) \big)$$
 
-$$v_{ff}(t + \tau)  = v_f(t)  + 2.5\, a_{f}\, \tau  \left( 1 - \frac{v_f(t)}{V_{f}} \right) \sqrt{0.025 + \frac{v_f(t)}{V_{f}}}$$
+$$v_{ff}(t + \tau)  = v_f(t)  + 2.5\ a_{f}\ \tau  \left( 1 - \frac{v_f(t)}{V_{f}} \right) \sqrt{0.025 + \frac{v_f(t)}{V_{f}}}$$
 
 $$v_{cf}(t + \tau)
-= b_{f}\, \tau + \sqrt{b_{f}^2 \tau^2 - b_{f} \left[ 2\big(x_l(t) - \ell_l - x_f(t)\big) - v_f(t)\, \tau - \frac{v_l^2(t)}{\Psi b_l} \right] }$$
+= b_{f}\ \tau + \sqrt{b_{f}^2 \tau^2 - b_{f} \left[ 2\big(x_l(t) - \ell_l - x_f(t)\big) - v_f(t)\ \tau - \frac{v_l^2(t)}{\Psi b_l} \right] }$$
 
 Given 
 
