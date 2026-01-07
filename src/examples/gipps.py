@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+from sbi.utils import BoxUniform
 
 
 def one_step_update(af, bf, Vf, tau, ll, psi, vf_prev, xf_prev, vl_prev, xl_prev, bl):
@@ -33,7 +34,7 @@ def follower_trajectory(af, bf, Vf, tau, ll, psi, vf0, xf0, vl, xl, N, bl):
     return xf, vf
 
 
-def simulate_leader_trajectory(al, bl, Vl, tau, xl0, vl0, N, p_accel, p_brake):
+def simulate_leader_trajectory(al, bl, Vl, xl0, vl0, p_accel, p_brake, tau, N):
     """
     Generate a stochastic leader trajectory that follows the free-flow part of Gipps
     ODE, but add random accelerating and braking with probabilities p_accel and 
@@ -125,7 +126,7 @@ def plot_all(xf, vf, xl, vl, tau, N, ll):
     plt.show()
 
 
-def follow_trajectory_stochastic(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, ll, psi, xl, vl, bl):
+def follower_trajectory_stochastic(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, ll, psi, xl, vl, bl):
     """
     af, bf, Vf, xv0, vf0 are the BAYESIAN PARAMETERS. 
     All other arguments are fixed.
@@ -134,4 +135,72 @@ def follow_trajectory_stochastic(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N,
     xf = torch.tensor(xf) 
     noise = torch.distributions.MultivariateNormal(mu*torch.ones(N+1), covariance_matrix=sigmasquared*torch.eye(N+1)).sample()
     return xf + noise, torch.tensor(vf) # Returns torch.tensors
+
+
+def simulator(theta, tau, N, ll, psi, xl, vl, bl):
+    """
+    theta can be either:
+
+    a 1d numpy array of the form array([af, bf, Vf, xf0, vf0, mu, sigmasquared])
+    OR
+    a 2d numpy array that contains multiple [af, bf, Vf, xf0, vf0, mu, sigmasquared]
+    """
+    theta = theta.reshape(-1, 7)
+    n_samples = theta.shape[0]
+    simulations = torch.zeros((n_samples, N+1))
+    for simulation in range(n_samples):
+        af, bf, Vf, xf0, vf0, mu, sigmasquared = theta[simulation, :]
+        simulated_data, _ = follower_trajectory_stochastic(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, ll, psi, xl, vl, bl)
+        simulations[simulation, :] = simulated_data
+    return simulations
     
+
+def make_prior_7d_npe_a(aL, aU,
+                    bL, bU,
+                    VL, VU,
+                    xf0L, xf0U,
+                    vf0L, vf0U,
+                    muL, muU,
+                    sigmasquaredL, sigmasquaredU):
+
+    return BoxUniform(
+                        torch.tensor([aL, bL, VL, xf0L, vf0L, muL, sigmasquaredL]),
+                        torch.tensor([aU, bU, VU, xf0U, vf0U, muU, sigmasquaredU])
+                    )
+
+
+# Projection test function
+def test_function_projection(theta, i):
+    """
+    theta is a 1D or 2D torch.tensor 
+
+    project theta onto its i'th dimension
+    """
+    if theta.dim() == 1:
+        return theta[i]
+    else:
+        # In this case, theta is (batch_size, parameter_dimension)
+        return theta[:, i]
+    
+
+def test_function_squared_norm(theta):
+    """
+    theta is a 1D or 2D torch.tensor 
+
+    return squared norm of parameter vector
+    """
+    if theta.dim() == 1:
+        return torch.sum(theta**2)
+    else:
+        # In this case, theta is (batch_size, parameter_dimension)
+        return torch.sum(theta**2, axis=1)
+
+
+def get_test_function(test_function_name="projection0"):
+    for i in range(7):
+        if test_function_name == f"projection{i}":
+            return lambda x : test_function_projection(x, i)
+    if test_function_name=="squared_norm":
+        return test_function_squared_norm
+    else:
+        raise NotImplementedError("No matching test function.")
