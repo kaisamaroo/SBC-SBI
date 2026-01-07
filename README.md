@@ -24,8 +24,6 @@ This example aims to mimic what is commonly done in practise where practitioners
 
 ### **gipps_7d**: Parameter inference on the Gipps car following model.
 
-# SBI on Gipps car following model
-
 In this experiment, we apply SBI and SBC to the Gipps car following model (original paper: https://www.sciencedirect.com/science/article/pii/0191261581900370). We follow the experiments used in https://www.sciencedirect.com/science/article/pii/S0378437124001808?fr=RR-2&ref=pdf_download&rr=9a4270eb8b679466, who apply Bayesian inference (MCMC) to estimate the parameters of the Gipps ODE that generated a given follower trajectory. We tweak this paper by applying SBI and SBC to the inference problem. No code was provided by the authors, so a direct comparison to their methodology is not possible.
 
 The Gipps model is a differential equation that deterministically defines the displacement $\{x_f(t) : t \in [0,T]\}$ of a follower car, given a leader's trajectory $\{(x_l(t), v_l(t)) : t \in [0,T]\}$ and some driver-specific ODE parameters $(\tau, a_f, b_f, V_f, \ell_l, b_l, \Psi, x_f(0), v_f(0))$, where
