@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from sbi.utils import BoxUniform
+from torch.distributions import Normal, InverseGamma, MultivariateNormal
+from sbi.utils import MultipleIndependent, BoxUniform
 
 
 def one_step_update(af, bf, Vf, tau, ll, psi, vf_prev, xf_prev, vl_prev, xl_prev, bl):
@@ -167,6 +168,22 @@ def make_prior_7d_npe_a(aL, aU,
                         torch.tensor([aL, bL, VL, xf0L, vf0L, muL, sigmasquaredL]),
                         torch.tensor([aU, bU, VU, xf0U, vf0U, muU, sigmasquaredU])
                     )
+
+
+def make_prior_7d_npe_c(aL, aU,
+        bL, bU,
+        VL, VU,
+        xf0L, xf0U,
+        vf0L, vf0U,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared):
+
+    return MultipleIndependent([
+        BoxUniform(torch.tensor([aL, bL, VL, xf0L, vf0L]),
+                torch.tensor([aU, bU, VU, xf0U, vf0U])),
+        Normal(torch.tensor([prior_mean_mu]), torch.tensor([np.sqrt(prior_variance_mu)])),
+        InverseGamma(torch.tensor([prior_alpha_sigmasquared]), torch.tensor([1/prior_beta_sigmasquared])) # NOT SURE ABOUT SCALE OR RATE PARAM. IS BETA THE SCALE OR THE RATE?
+    ])
 
 
 # Projection test function

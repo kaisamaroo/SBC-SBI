@@ -9,6 +9,7 @@ import yaml
 
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_a")
+trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
 def main(al, bl, Vl, xl0, vl0, p_accel, p_brake, tau, N):
@@ -18,7 +19,7 @@ def main(al, bl, Vl, xl0, vl0, p_accel, p_brake, tau, N):
 
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/leader_trajectory{i}.npz"):
+    while os.path.exists(trajectories_path + f"/leader_trajectory{i}.npz"):
         i += 1
 
     config = {
@@ -33,8 +34,8 @@ def main(al, bl, Vl, xl0, vl0, p_accel, p_brake, tau, N):
             "N": N,
         }
 
-    leader_trajectory_save_path = results_path + f"/leader_trajectory{i}" + ".npz"
-    config_save_path = results_path + f"/leader_trajectory{i}" + ".yaml"
+    leader_trajectory_save_path = trajectories_path + f"/leader_trajectory{i}" + ".npz"
+    config_save_path = trajectories_path + f"/leader_trajectory{i}" + ".yaml"
     
     print(f"Saving xl, vl to path {leader_trajectory_save_path}:")
     np.savez(leader_trajectory_save_path, xl=xl, vl=vl)

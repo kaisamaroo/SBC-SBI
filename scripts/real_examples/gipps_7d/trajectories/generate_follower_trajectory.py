@@ -9,12 +9,13 @@ import os
 
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_a")
+trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
 def main(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, psi, ll, bl, leader_trajectory_ID):
     leader_trajectory_name = f"leader_trajectory{leader_trajectory_ID}"
-    path_to_leader_trajectory = results_path + "/" + leader_trajectory_name + ".npz"
-    path_to_leader_trajectory_config = results_path + "/" + leader_trajectory_name + ".yaml"
+    path_to_leader_trajectory = trajectories_path + "/" + leader_trajectory_name + ".npz"
+    path_to_leader_trajectory_config = trajectories_path + "/" + leader_trajectory_name + ".yaml"
 
     # Retrieve leader trajectory
     leader_trajectory = np.load(path_to_leader_trajectory)
@@ -52,11 +53,11 @@ def main(af, bf, Vf, xf0, vf0, mu, sigmasquared, tau, N, psi, ll, bl, leader_tra
 
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}.npz"):
+    while os.path.exists(trajectories_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}.npz"):
         i += 1
 
-    follower_trajectory_save_path = results_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}" + ".npz"
-    config_save_path = results_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
+    follower_trajectory_save_path = trajectories_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}" + ".npz"
+    config_save_path = trajectories_path + f"/follower_trajectory{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
 
     print(f"Saving xf, vf to path {follower_trajectory_save_path}:")
     np.savez(follower_trajectory_save_path, xf=xf, vf=vf)

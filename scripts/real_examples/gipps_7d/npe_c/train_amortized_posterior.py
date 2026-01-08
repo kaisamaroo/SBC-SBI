@@ -1,28 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from sbi.inference import NPE_A
+from sbi.inference import NPE_C
 import scipy
-from examples.gipps import make_prior_7d_npe_a, simulator
+from examples.gipps import make_prior_7d_npe_c, simulator
 import argparse
 from pathlib import Path
 import pickle
 import yaml
 import os
+from torch.distributions import Normal, InverseGamma, MultivariateNormal
+from sbi.utils import MultipleIndependent, BoxUniform
 
 path_to_repo = Path(__file__).resolve().parents[4]
-results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_a")
+results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_c")
 trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
-def main(num_simulations, num_components,
+def main(num_simulations,
         aL, aU,
         bL, bU,
         VL, VU,
         xf0L, xf0U,
         vf0L, vf0U,
-        muL, muU,
-        sigmasquaredL, sigmasquaredU,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared,
         tau, N, ll, psi, bl, leader_trajectory_ID):
     
     prior_config = {
@@ -36,23 +38,22 @@ def main(num_simulations, num_components,
             "xf0U": xf0U,
             "vf0L": vf0L,
             "vf0U": vf0U,
-            "muL": muL,
-            "muU": muU,
-            "sigmasquaredL": sigmasquaredL,
-            "sigmasquaredU": sigmasquaredU,
+            "prior_mean_mu": prior_mean_mu,
+            "prior_variance_mu": prior_variance_mu,
+            "prior_alpha_sigmasquared": prior_alpha_sigmasquared,
+            "prior_beta_sigmasquared": prior_beta_sigmasquared,
         }
     
-    prior = make_prior_7d_npe_a(aL, aU,
-                        bL, bU,
-                        VL, VU,
-                        xf0L, xf0U,
-                        vf0L, vf0U,
-                        muL, muU,
-                        sigmasquaredL, sigmasquaredU)
+    prior = make_prior_7d_npe_c(aL, aU,
+        bL, bU,
+        VL, VU,
+        xf0L, xf0U,
+        vf0L, vf0U,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared)
     
     amortized_posterior_config = {
         "num_simulations": num_simulations,
-        "num_components": num_components,
         "tau": tau, 
         "N": N,
         "ll": ll, 
@@ -80,15 +81,14 @@ def main(num_simulations, num_components,
     xl = leader_trajectory["xl"]
     vl = leader_trajectory["vl"]
     
-    
-    inference = NPE_A(prior=prior, num_components=num_components)
+    inference = NPE_C(prior=prior)
     print("Generating samples:")
     parameter_samples = prior.sample((num_simulations,))  # simulate parameters from prior
     data_samples = simulator(parameter_samples, tau, N, ll, psi, xl, vl, bl)  # simulate data for each parameter
     print("Samples generated successfully.")
     print("Training posterior:")
     inference = inference.append_simulations(parameter_samples, data_samples)
-    density_estimator = inference.train(final_round=True)
+    density_estimator = inference.train()
     amortized_posterior = inference.build_posterior()
     print("Posterior trained successfully.")
 
@@ -114,7 +114,6 @@ def main(num_simulations, num_components,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_simulations", type=int, default=20000)
-    parser.add_argument("--num_components", type=int, default=1)
 
     parser.add_argument("--aL", type=float, default=0.5)
     parser.add_argument("--aU", type=float, default=3.5)
@@ -126,10 +125,10 @@ if __name__ == "__main__":
     parser.add_argument("--xf0U", type=float, default=-10.)
     parser.add_argument("--vf0L", type=float, default=5.)
     parser.add_argument("--vf0U", type=float, default=25.)
-    parser.add_argument("--muL", type=float, default=-5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--muU", type=float, default=5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--sigmasquaredL", type=float, default=0.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
-    parser.add_argument("--sigmasquaredU", type=float, default=3.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
+    parser.add_argument("--prior_mean_mu", type=float, default=0.) 
+    parser.add_argument("--prior_variance_mu", type=float, default=9.)
+    parser.add_argument("--prior_alpha_sigmasquared", type=float, default=1.)
+    parser.add_argument("--prior_beta_sigmasquared", type=float, default=3.)
 
     parser.add_argument("--tau", type=float, default=0.5)
     parser.add_argument("--N", type=int, default=200)
@@ -139,12 +138,12 @@ if __name__ == "__main__":
     parser.add_argument("--leader_trajectory_ID", type=int, required=True)
 
     args = parser.parse_args()
-    main(args.num_simulations, args.num_components,
+    main(args.num_simulations,
         args.aL, args.aU,
         args.bL, args.bU,
         args.VL, args.VU,
         args.xf0L, args.xf0U,
         args.vf0L, args.vf0U,
-        args.muL, args.muU,
-        args.sigmasquaredL, args.sigmasquaredU,
+        args.prior_mean_mu, args.prior_variance_mu,
+        args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
         args.tau, args.N, args.ll, args.psi, args.bl, args.leader_trajectory_ID)

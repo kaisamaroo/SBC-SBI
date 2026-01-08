@@ -1,15 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
-from torch.distributions import Normal
-from sbi.inference import NPE_A
-from sbi.analysis import pairplot
-import scipy
-from scipy.integrate import cumulative_trapezoid
-from scipy.interpolate import interp1d
-from torch.distributions import Exponential, Normal, InverseGamma, MultivariateNormal
-from sbi.utils import BoxUniform
-from examples.gipps import make_prior_7d_npe_a, simulator
+from sbi.inference import NPE_C
+from examples.gipps import make_prior_7d_npe_c, simulator
 import argparse
 from pathlib import Path
 import pickle
@@ -17,18 +9,18 @@ import yaml
 import os
 
 path_to_repo = Path(__file__).resolve().parents[4]
-results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_a")
+results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_c")
 trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
-def main(num_sequential_rounds, num_simulations_per_round, num_components,
+def main(num_sequential_rounds, num_simulations_per_round,
         aL, aU,
         bL, bU,
         VL, VU,
         xf0L, xf0U,
         vf0L, vf0U,
-        muL, muU,
-        sigmasquaredL, sigmasquaredU,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared,
         tau, N, ll, psi, bl, leader_trajectory_ID, follower_trajectory_ID):
     
     prior_config = {
@@ -42,24 +34,23 @@ def main(num_sequential_rounds, num_simulations_per_round, num_components,
             "xf0U": xf0U,
             "vf0L": vf0L,
             "vf0U": vf0U,
-            "muL": muL,
-            "muU": muU,
-            "sigmasquaredL": sigmasquaredL,
-            "sigmasquaredU": sigmasquaredU,
+            "prior_mean_mu": prior_mean_mu,
+            "prior_variance_mu": prior_variance_mu,
+            "prior_alpha_sigmasquared": prior_alpha_sigmasquared,
+            "prior_beta_sigmasquared": prior_beta_sigmasquared,
         }
     
-    prior = make_prior_7d_npe_a(aL, aU,
+    prior = make_prior_7d_npe_c(aL, aU,
                         bL, bU,
                         VL, VU,
                         xf0L, xf0U,
                         vf0L, vf0U,
-                        muL, muU,
-                        sigmasquaredL, sigmasquaredU)
+                        prior_mean_mu, prior_variance_mu,
+                        prior_alpha_sigmasquared, prior_beta_sigmasquared)
     
     amortized_posterior_config = {
         "num_sequential_rounds": num_sequential_rounds,
         "num_simulations_per_round": num_simulations_per_round,
-        "num_components": num_components,
         "tau": tau, 
         "N": N,
         "ll": ll, 
@@ -101,7 +92,7 @@ def main(num_sequential_rounds, num_simulations_per_round, num_components,
     follower_trajectory = np.load(path_to_follower_trajectory)
     xf_obs = follower_trajectory["xf"] # Observed follower trajectory that we condition our training on
     
-    inference = NPE_A(prior, num_components=num_components)
+    inference = NPE_C(prior=prior)
     proposal = prior
     for r in range(num_sequential_rounds):
         print(f"Round {r+1}:")
@@ -109,16 +100,14 @@ def main(num_sequential_rounds, num_simulations_per_round, num_components,
         parameter_samples = proposal.sample((num_simulations_per_round,))
         data_samples = simulator(parameter_samples, tau, N, ll, psi, xl, vl, bl)
         print("Samples generated successfully.")
-        # NPE-A trains a Gaussian density estimator in all but the last round. In the last round,
-        # it trains a mixture of Gaussians, which is why we have to pass the `final_round` flag.
         if r == num_sequential_rounds - 1:
             print("Training posterior:")
-            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=True)
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
             sequential_posterior = inference.build_posterior()
             print("Posterior trained successfully.")
         else:
             print("Training posterior:")
-            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=False)
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
             sequential_posterior = inference.build_posterior().set_default_x(xf_obs)
             print("Posterior trained successfully.")
             proposal = sequential_posterior
@@ -146,7 +135,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
-    parser.add_argument("--num_components", type=int, default=1)
 
     parser.add_argument("--aL", type=float, default=0.5)
     parser.add_argument("--aU", type=float, default=3.5)
@@ -158,10 +146,10 @@ if __name__ == "__main__":
     parser.add_argument("--xf0U", type=float, default=-10.)
     parser.add_argument("--vf0L", type=float, default=5.)
     parser.add_argument("--vf0U", type=float, default=25.)
-    parser.add_argument("--muL", type=float, default=-5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--muU", type=float, default=5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--sigmasquaredL", type=float, default=0.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
-    parser.add_argument("--sigmasquaredU", type=float, default=3.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
+    parser.add_argument("--prior_mean_mu", type=float, default=0.) 
+    parser.add_argument("--prior_variance_mu", type=float, default=9.)
+    parser.add_argument("--prior_alpha_sigmasquared", type=float, default=1.)
+    parser.add_argument("--prior_beta_sigmasquared", type=float, default=3.)
 
     parser.add_argument("--tau", type=float, default=0.5)
     parser.add_argument("--N", type=int, default=200)
@@ -173,12 +161,12 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    main(args.num_sequential_rounds, args.num_simulations_per_round, args.num_components,
+    main(args.num_sequential_rounds, args.num_simulations_per_round,
         args.aL, args.aU,
         args.bL, args.bU,
         args.VL, args.VU,
         args.xf0L, args.xf0U,
         args.vf0L, args.vf0U,
-        args.muL, args.muU,
-        args.sigmasquaredL, args.sigmasquaredU,
+        args.prior_mean_mu, args.prior_variance_mu,
+        args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
         args.tau, args.N, args.ll, args.psi, args.bl, args.leader_trajectory_ID, args.follower_trajectory_ID)

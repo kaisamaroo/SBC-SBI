@@ -4,7 +4,6 @@ amortized_posterior_config:
     bl: -4.0
     leader_trajectory_ID: 0
     ll: 7.5
-    num_components: 1
     num_simulations: 100
     psi: 1.05
     tau: 0.5
@@ -25,10 +24,10 @@ amortized_posterior_config:
     aU: 3.5
     bL: -6.0
     bU: -1.0
-    muL: -5.0
-    muU: 5.0
-    sigmasquaredL: 0.0
-    sigmasquaredU: 3.0
+    prior_alpha_sigmasquared: 1.0
+    prior_beta_sigmasquared: 3.0
+    prior_mean_mu: 0.0
+    prior_variance_mu: 9.0
     vf0L: 5.0
     vf0U: 25.0
     xf0L: -60.0
@@ -50,10 +49,10 @@ prior_config:
   aU: 3.5
   bL: -6.0
   bU: -1.0
-  muL: -5.0
-  muU: 5.0
-  sigmasquaredL: 0.0
-  sigmasquaredU: 3.0
+  prior_alpha_sigmasquared: 1.0
+  prior_beta_sigmasquared: 3.0
+  prior_mean_mu: 0.0
+  prior_variance_mu: 9.0
   vf0L: 5.0
   vf0U: 25.0
   xf0L: -60.0
@@ -66,7 +65,6 @@ sbc_config:
   bl: -4.0
   leader_trajectory_ID: 0
   ll: 7.5
-  num_components: 1
   psi: 1.05
   tau: 0.5
   test_function_name: projection0

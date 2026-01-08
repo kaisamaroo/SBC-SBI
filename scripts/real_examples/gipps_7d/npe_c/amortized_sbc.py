@@ -1,15 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from torch.distributions import Normal
-from sbi.inference import NPE_A
-from sbi.analysis import pairplot
+from sbi.inference import NPE_C
 import scipy
-from scipy.integrate import cumulative_trapezoid
-from scipy.interpolate import interp1d
 from torch.distributions import Exponential, Normal, InverseGamma, MultivariateNormal
-from sbi.utils import BoxUniform
-from examples.gipps import make_prior_7d_npe_a, simulator, get_test_function
+from sbi.utils import BoxUniform, MultipleIndependent
+from examples.gipps import make_prior_7d_npe_c, simulator, get_test_function
 from sbc.sbc_tools import sbc_ranks
 import argparse
 from pathlib import Path
@@ -18,7 +14,7 @@ import yaml
 import os
 
 path_to_repo = Path(__file__).resolve().parents[4]
-results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_a")
+results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_c")
 trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
@@ -28,8 +24,8 @@ def main(N_iter, N_samp, amortized_posterior_ID, leader_trajectory_ID, test_func
         VL, VU,
         xf0L, xf0U,
         vf0L, vf0U,
-        muL, muU,
-        sigmasquaredL, sigmasquaredU,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared,
         tau, N, ll, psi, bl):
     
     prior_config = {
@@ -43,19 +39,19 @@ def main(N_iter, N_samp, amortized_posterior_ID, leader_trajectory_ID, test_func
             "xf0U": xf0U,
             "vf0L": vf0L,
             "vf0U": vf0U,
-            "muL": muL,
-            "muU": muU,
-            "sigmasquaredL": sigmasquaredL,
-            "sigmasquaredU": sigmasquaredU,
+            "prior_mean_mu": prior_mean_mu,
+            "prior_variance_mu": prior_variance_mu,
+            "prior_alpha_sigmasquared": prior_alpha_sigmasquared,
+            "prior_beta_sigmasquared": prior_beta_sigmasquared,
         }
     
-    prior = make_prior_7d_npe_a(aL, aU,
+    prior = make_prior_7d_npe_c(aL, aU,
                         bL, bU,
                         VL, VU,
                         xf0L, xf0U,
                         vf0L, vf0U,
-                        muL, muU,
-                        sigmasquaredL, sigmasquaredU)
+                        prior_mean_mu, prior_variance_mu,
+                        prior_alpha_sigmasquared, prior_beta_sigmasquared)
 
     sbc_config = {
         "N_iter": N_iter,
@@ -145,10 +141,10 @@ if __name__ == "__main__":
     parser.add_argument("--xf0U", type=float, default=-10.)
     parser.add_argument("--vf0L", type=float, default=5.)
     parser.add_argument("--vf0U", type=float, default=25.)
-    parser.add_argument("--muL", type=float, default=-5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--muU", type=float, default=5.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE N(0,9)
-    parser.add_argument("--sigmasquaredL", type=float, default=0.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
-    parser.add_argument("--sigmasquaredU", type=float, default=3.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
+    parser.add_argument("--prior_mean_mu", type=float, default=0.) 
+    parser.add_argument("--prior_variance_mu", type=float, default=9.)
+    parser.add_argument("--prior_alpha_sigmasquared", type=float, default=1.)
+    parser.add_argument("--prior_beta_sigmasquared", type=float, default=3.)
 
     parser.add_argument("--tau", type=float, default=0.5)
     parser.add_argument("--N", type=int, default=200)
@@ -165,6 +161,6 @@ if __name__ == "__main__":
         args.VL, args.VU,
         args.xf0L, args.xf0U,
         args.vf0L, args.vf0U,
-        args.muL, args.muU,
-        args.sigmasquaredL, args.sigmasquaredU,
+        args.prior_mean_mu, args.prior_variance_mu,
+        args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
         args.tau, args.N, args.ll, args.psi, args.bl)
