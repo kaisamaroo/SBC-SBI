@@ -1,0 +1,6 @@
+num_components: 1
+num_simulations: 20000
+sigma: 150.0
+simulation_time: 0.0014267080000003318
+total_time: 27.053687416
+training_time: 27.052260708

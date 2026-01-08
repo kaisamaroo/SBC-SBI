@@ -140,6 +140,53 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
     return ranks
 
 
+def sbc_ranks_and_samples(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False):
+    """
+    return normalized SBC ranks AND a sictionary containing each round's samples
+    """
+    ranks = []
+    samples_dict = {}
+    print_indices = [(i * N_iter) // 10 for i in range(10)]
+    for i in range(N_iter):
+        if show_progress and i in print_indices:
+            print(f"SBC round {i} out of {N_iter} ({100 * i / N_iter}%)")
+        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+        simulated_datapoint = model(prior_sample) # Simulate a datapoint from the model given the prior sample. Returns 1d tensor
+        posterior_samples = posterior.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+
+        samples_dict[f"prior_sample_round_{i}"] = prior_sample
+        samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+        samples_dict[f"posterior_samples_round_{i}"] = np.array(posterior_samples)
+
+        if test_function:
+            rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+        else:
+            # If no test function provided, assume theta is 1D.
+            rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+        ranks.append(float(rank))
+    if show_progress:
+        print("SBC complete")
+    return ranks, samples_dict
+
+
+def train_snpe_a_posterior(simulator, prior, x_observed, num_sequential_rounds, num_simulations_per_round, num_components):
+    inference = NPE_A(prior, num_components=num_components)
+    proposal = prior
+    for r in range(num_sequential_rounds):
+        parameter_samples = proposal.sample((num_simulations_per_round,))
+        data_samples = simulator(parameter_samples)
+        # SNPE-A trains a Gaussian density estimator in all but the last round. In the last round,
+        # it trains a mixture of Gaussians, which is why we have to pass the `final_round` flag.
+        if r == num_sequential_rounds - 1:
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=True)
+            sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
+        else:
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=False)
+            sequential_posterior = inference.build_posterior().set_default_x(x_observed)
+            proposal = sequential_posterior
+    return sequential_posterior
+
+
 def sbc_ranks_snpe_a(simulator,
                          prior,
                          train_sequential_posterior,
@@ -182,6 +229,56 @@ def sbc_ranks_snpe_a(simulator,
     if show_progress:
         print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
     return ranks
+
+
+def sbc_ranks_snpe_a_and_samples(simulator,
+                         prior,
+                         train_sequential_posterior,
+                         test_function=None,
+                         N_iter=100,
+                         N_samp=100,
+                         num_sequential_rounds=4,
+                         num_simulations_per_round=5000,
+                         num_components=1,
+                         show_progress=False):
+    """
+    return normalized SBC ranks for SNPE-A, being careful to account for errors
+    due to non-spd covariance matrices
+    """
+    failed_round_counter = 0
+    ranks = []
+    samples_dict = {}
+    for i in range(N_iter):
+        if show_progress:
+            print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+        simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+        samples_dict[f"prior_sample_round_{i}"] = prior_sample
+        samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+        try:
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, num_components)
+            try:
+                posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+                samples_dict[f"posterior_samples_round_{i}"] = posterior_samples
+                if test_function:
+                    rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+                else:
+                    # If no test function provided, assume theta is 1D.
+                    rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+                ranks.append(float(rank))
+            except AssertionError:
+                print(f"\n SBC ROUND {i+1} FINAL POSTERIOR NOT SPD! SKIPPING ROUND")
+                ranks.append(np.nan)
+                samples_dict[f"posterior_samples_round_{i}"] = np.nan
+                failed_round_counter += 1
+        except AssertionError:
+            print(f"\n SBC ROUND {i+1} HAD A PROPOSAL PRIOR NOT SPD! SKIPPING ROUND")
+            ranks.append(np.nan)
+            samples_dict[f"posterior_samples_round_{i}"] = np.nan
+            failed_round_counter += 1
+    if show_progress:
+        print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
+    return ranks, samples_dict
 
 
 def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, show_progress=True):

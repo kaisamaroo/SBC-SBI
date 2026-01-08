@@ -5,24 +5,42 @@ import pickle
 from examples.norm_norm_diffuse_1d import make_prior, simulator
 import argparse
 from pathlib import Path
+import os
+import yaml
+import time
 
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "norm_norm_diffuse_1d" / "npe_a")
 
-def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, num_components, show_progress):
+def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, num_components):
     prior = make_prior(sigma)
     inference = NPE_A(prior, num_components=num_components)
     proposal = prior
+
+    # Initialize simulation and train time lists (one per round)
+    simulation_times = []
+    training_times = []
+
+    # Initialize samples_dict to store all parameter and data samples
+    samples_dict = {}
+
     for r in range(num_sequential_rounds):
-        if show_progress:
-            print(f"Round {r+1}:")
-            print("Generating samples:")
+        print(f"Round {r+1}:")
+        print("Generating samples:")
+        sample_start_time = time.perf_counter()
         parameter_samples = proposal.sample((num_simulations_per_round,))
         data_samples = simulator(parameter_samples)
-        if show_progress:  
-            print("Samples generated")
+        sample_end_time = time.perf_counter()
+        sample_time = sample_end_time - sample_start_time
+        simulation_times.append(float(sample_time))
+        # Save samples
+        samples_dict[f"parameter_samples_round_{r}"] = parameter_samples
+        samples_dict[f"data_samples_round_{r}"] = data_samples
+        print("Samples generated")
+
         # SNPE-A trains a Gaussian density estimator in all but the last round. In the last round,
         # it trains a mixture of Gaussians, which is why we have to pass the `final_round` flag.
+        training_start_time = time.perf_counter()
         if r == num_sequential_rounds - 1:
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=True)
             sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
@@ -30,14 +48,44 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, nu
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(final_round=False)
             sequential_posterior = inference.build_posterior().set_default_x(x_observed)
             proposal = sequential_posterior
+        training_end_time = time.perf_counter()
+        training_time = training_end_time - training_start_time
+        training_times.append(float(training_time))
     print("Posterior trained successfully.")
+
+    total_time = sum(simulation_times) + sum(training_times)
+
+    config = {"sigma": sigma, 
+              "x_observed": x_observed,
+              "num_sequential_rounds": num_sequential_rounds,
+              "num_simulations_per_round": num_simulations_per_round,
+              "num_components": num_components,
+              "simulation_times": simulation_times,
+              "training_times": training_times,
+              "total_time": total_time}
     
-    # Save posterior using pickle
-    save_path = results_path + f"/sequential_posterior_xobs{x_observed}_sig{sigma}_nspr{num_simulations_per_round}_nr{num_sequential_rounds}_nc{num_components}.pkl"
-    print(f"Saving trained posterior to {save_path}:")
-    with open(save_path, "wb") as handle:
+    # Find next ID
+    i = 0
+    while os.path.exists(results_path + f"/sequential_posterior{i}.pkl"):
+        i += 1
+    
+    # Save paths
+    sequential_posterior_save_path = results_path + f"/sequential_posterior{i}.pkl"
+    config_save_path = results_path + f"/sequential_posterior{i}.yaml"
+    simulations_save_path = results_path + f"/sequential_posterior{i}_simulations.npz"
+    
+    print(f"Saving trained posterior to {sequential_posterior_save_path}:")
+    with open(sequential_posterior_save_path, "wb") as handle:
         pickle.dump(sequential_posterior, handle)
     print("Posterior saved successfully.")
+
+    print(f"Saving config file to {config_save_path}:")
+    with open(config_save_path, "w") as f:
+        yaml.safe_dump(config, f)
+    print("Config file saved successfully.")
+
+    # Save simulations:
+    np.savez(simulations_save_path, **samples_dict)
 
 
 if __name__ == "__main__":
@@ -47,6 +95,5 @@ if __name__ == "__main__":
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
     parser.add_argument("--num_components", type=int, default=1)
-    parser.add_argument("--show_progress", type=bool, default=True)
     args = parser.parse_args()
-    main(args.sigma, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round, args.num_components, args.show_progress)
+    main(args.sigma, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round, args.num_components)
