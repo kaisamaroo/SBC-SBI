@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import kstwobign # Kolmogorov distribution
 import torch
+from sbi.inference import NPE_A, NPE_C
 
 def plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title=None, ax=None):
     ranks = np.array(ranks)
@@ -181,6 +182,32 @@ def sbc_ranks_snpe_a(simulator,
     if show_progress:
         print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
     return ranks
+
+
+def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, show_progress=True):
+    """
+    Return x_obs-sequentially-trained SNPE-C posterior 
+    """
+    inference = NPE_C(prior)
+    proposal = prior
+    for r in range(num_sequential_rounds):
+        if show_progress:
+            print(f"\n ------------- SEQUENTIAL ROUND {r+1} out of {num_sequential_rounds} -------------")
+            print(f"Generating {num_simulations_per_round} training samples")
+        parameter_samples = proposal.sample((num_simulations_per_round,))
+        data_samples = simulator(parameter_samples)
+        if show_progress:
+            print("Training samples generated")
+
+        if r == num_sequential_rounds - 1:
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
+            # Final posterior shouldnt be conditioned on x_obs (so we can see how it infers other x)
+            sequential_posterior = inference.build_posterior()
+        else:
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
+            sequential_posterior = inference.build_posterior().set_default_x(x_obs)
+            proposal = sequential_posterior
+    return sequential_posterior
 
 
 def sbc_ranks_snpe_c(simulator,
