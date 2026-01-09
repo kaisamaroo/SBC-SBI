@@ -197,7 +197,7 @@ def approximate_posterior_quantiles_against_x(posterior, x_range, num_samples=50
 
 
 
-def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None):
+def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
@@ -211,6 +211,12 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     levels = [0.005, 0.125, 0.875, 0.995]
     labels = ["99% of approximate posterior mass", "75% of approximate posterior mass", "median of approximate posterior", None, None]
     labels_shaded_region = ["99% of posterior mass", "75% of posterior mass", None]
+
+    # If samples are given, plot them
+    if samples:
+        parameter_samples = samples["parameter_samples"]
+        data_samples = samples["data_samples"]
+        ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=1, color="black")
 
     post_mean = (sigma**2 / (1 + sigma**2)) * x_range
     post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
@@ -239,25 +245,34 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     ax.set_title(title)
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$\theta$")
+    ax.set_xlim((np.min(x_range), np.max(x_range)))
     if not ax:
         plt.legend()
         plt.show()
     return ax
 
 
-def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1):
+def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
 
     quantiles should be computed using approximate_posterior_quantiles_against_x
     """
-    fig, ax = plt.subplots(figsize=(10,5))
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10,5))
     colors = ["red", "blue", "black", "blue", "red"]
     color_shaded_region = ["red", "blue", "red"]
     levels = [0.005, 0.125, 0.875, 0.995]
     labels = ["99% of approximate posterior mass", "75% of approximate posterior mass", "median of approximate posterior", None, None]
     labels_shaded_region = ["99% of posterior mass", "75% of posterior mass", None]
+
+    # If samples are given, plot them
+    if samples:
+        parameter_samples = samples["parameter_samples"]
+        data_samples = samples["data_samples"]
+        post_mean_on_samples = (sigma**2 / (1 + sigma**2)) * data_samples
+        ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples minus true posterior mean", alpha=0.6, s=1, color="black")
 
     post_mean = (sigma**2 / (1 + sigma**2)) * x_range
     post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
@@ -288,6 +303,8 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
     ax.set_title(title)
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$\theta$")
-
-    plt.legend()
-    plt.show()
+    ax.set_xlim((np.min(x_range), np.max(x_range)))
+    if not ax:
+        plt.legend()
+        plt.show()
+    return ax
