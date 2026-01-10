@@ -4,6 +4,7 @@ from scipy.stats import kstwobign # Kolmogorov distribution
 import torch
 from sbi.inference import NPE_A, NPE_C
 
+
 def plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title=None, ax=None):
     ranks = np.array(ranks)
 
@@ -26,6 +27,7 @@ def plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title=None, ax=None):
         plt.show()
 
     return ax
+
 
 def plot_sbc_ecdf(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=None):
     ranks = np.array(ranks)
@@ -64,6 +66,7 @@ def plot_sbc_ecdf(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=Non
 
     return ax
 
+
 def plot_sbc_ecdf_diff(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=None):
     ranks = np.array(ranks)
 
@@ -99,6 +102,7 @@ def plot_sbc_ecdf_diff(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, a
         plt.show()
     return ax
 
+
 def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
     ranks = np.array(ranks)
 
@@ -116,6 +120,7 @@ def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
     plt.tight_layout()
     plt.show()
     return ax
+
 
 def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False):
     """
@@ -336,3 +341,38 @@ def sbc_ranks_snpe_c(simulator,
     if show_progress:
         print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
     return ranks
+
+
+def sbc_ranks_snpe_c_and_samples(simulator,
+                    prior,
+                    train_sequential_posterior,
+                    test_function=None,
+                    N_iter=100,
+                    N_samp=100,
+                    num_sequential_rounds=4,
+                    num_simulations_per_round=5000,
+                    show_progress=True):
+    """
+    return normalized SBC ranks for SNPE-C
+    """
+    ranks = []
+    samples_dict = {}
+    for i in range(N_iter):
+        if show_progress:
+            print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+        simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+        posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round)
+        posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+        samples_dict[f"prior_sample_round_{i}"] = prior_sample
+        samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+        samples_dict[f"posterior_samples_round_{i}"] = posterior_samples
+        if test_function:
+            rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+        else:
+            # If no test function provided, assume theta is 1D.
+            rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+        ranks.append(float(rank))
+    if show_progress:
+        print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
+    return ranks, samples_dict

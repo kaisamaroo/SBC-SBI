@@ -1,0 +1,12 @@
+num_sequential_rounds: 4
+num_simulations_per_round: 5000
+sigma: 150.0
+simulation_times:
+- 0.0010179169999999793
+- 0.03446112499999998
+- 0.012143334000001005
+- 0.01079241699999045
+total_time: 30.222365250999992
+training_times:
+- 30.163950458000002
+x_observed: 200.0

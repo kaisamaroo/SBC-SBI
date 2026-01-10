@@ -13,6 +13,7 @@ import time
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "norm_norm_diffuse_1d" / "npe_a")
 
+
 def main(N_iter, N_samp, sigma, amortized_posterior_ID):
     prior = make_prior(sigma)
     amortized_posterior_path = results_path + f"/amortized_posterior{amortized_posterior_ID}.pkl"

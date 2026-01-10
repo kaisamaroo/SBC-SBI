@@ -12,6 +12,7 @@ import time
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "norm_norm_diffuse_1d" / "npe_a")
 
+
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, num_components):
     prior = make_prior(sigma)
     inference = NPE_A(prior, num_components=num_components)
@@ -32,7 +33,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, nu
         data_samples = simulator(parameter_samples)
         sample_end_time = time.perf_counter()
         sample_time = sample_end_time - sample_start_time
-        simulation_times.append(float(sample_time))
+        simulation_times.append(sample_time)
         # Save samples
         samples_dict[f"parameter_samples_round_{r}"] = parameter_samples
         samples_dict[f"data_samples_round_{r}"] = data_samples
@@ -50,7 +51,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, nu
             proposal = sequential_posterior
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
-        training_times.append(float(training_time))
+        training_times.append(training_time)
     print("Posterior trained successfully.")
 
     total_time = sum(simulation_times) + sum(training_times)
