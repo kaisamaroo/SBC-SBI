@@ -1,7 +1,8 @@
-\begin{bmatrix}
+\begin{matrix}
 1 \\
 1
-\end{bmatrix}
+\end{matrix}
+
 
 Master's project investigating the ability of simulation-based calibration (SBC) to validate modern simulation-based inference (SBI) methods.
 
