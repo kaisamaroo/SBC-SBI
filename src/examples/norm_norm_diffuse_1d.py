@@ -197,7 +197,7 @@ def approximate_posterior_quantiles_against_x(posterior, x_range, num_samples=50
 
 
 
-def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None):
+def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None, s=1):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
@@ -214,9 +214,23 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
 
     # If samples are given, plot them
     if samples:
-        parameter_samples = samples["parameter_samples"]
-        data_samples = samples["data_samples"]
-        ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=1, color="black")
+        # Samples is either a dict of np arrays, or a dict of lists of np arrays
+        if isinstance(samples["parameter_samples"], list):
+            # Multi-round samples (sequential model)
+            for r in range(len(samples["parameter_samples"])):
+                parameter_samples = samples["parameter_samples"][r]
+                data_samples = samples["data_samples"][r]
+                # Plot samples from round r
+                if r == len(samples["parameter_samples"]) - 1:
+                    # Plot final round samples black
+                    ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s, color="black")
+                else:
+                    ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s)
+        else:
+            # Single-round samples (amortized model)
+            parameter_samples = samples["parameter_samples"]
+            data_samples = samples["data_samples"]
+            ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s, color="black")
 
     post_mean = (sigma**2 / (1 + sigma**2)) * x_range
     post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
@@ -252,7 +266,7 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     return ax
 
 
-def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None):
+def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None, s=1):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
@@ -269,10 +283,25 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
 
     # If samples are given, plot them
     if samples:
-        parameter_samples = samples["parameter_samples"]
-        data_samples = samples["data_samples"]
-        post_mean_on_samples = (sigma**2 / (1 + sigma**2)) * data_samples
-        ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples minus true posterior mean", alpha=0.6, s=1, color="black")
+        # Samples is either a dict of np arrays, or a dict of lists of np arrays
+        if isinstance(samples["parameter_samples"], list):
+            # Multi-round samples (sequential model)
+            for r in range(len(samples["parameter_samples"])):
+                parameter_samples = samples["parameter_samples"][r]
+                data_samples = samples["data_samples"][r]
+                post_mean_on_samples = (sigma**2 / (1 + sigma**2)) * data_samples
+                # Plot samples from round r
+                if r == len(samples["parameter_samples"]) - 1:
+                    # Plot final round samples black
+                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label=f"Training data samples (round {r})", alpha=0.6, s=s, color="black")
+                else:
+                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples (final round)", alpha=0.6, s=s)
+        else:
+            # Single-round samples (amortized model)
+            parameter_samples = samples["parameter_samples"]
+            data_samples = samples["data_samples"]
+            post_mean_on_samples = (sigma**2 / (1 + sigma**2)) * data_samples
+            ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples", alpha=0.6, s=s, color="black")
 
     post_mean = (sigma**2 / (1 + sigma**2)) * x_range
     post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
