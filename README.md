@@ -80,7 +80,7 @@ $$\{(x^\text{Gipps}_f(t), v^\text{Gipps}_f(t)) : t \in \{0, \tau, 2\tau, ..., T-
 
 In pseudocode, we can express the Gipps ODE solver as:
 
-$$x^\text{Gipps}_f, v^\text{Gipps}_f = \texttt{generate_follower_trajectory}(a_f, b_f, V_f, x_f(0), v_f(0), x_l, v_l)$$
+$$x^\text{Gipps}_f, v^\text{Gipps}_f = \texttt{generate} \_ \texttt{follower} \_ \texttt{trajectory}(a_f, b_f, V_f, x_f(0), v_f(0), x_l, v_l)$$
 
 Note that solving the Gipps equation gives the follower velocity time series, but using the first-order approximation $x^\text{Gipps}_f(t + \tau) = x^\text{Gipps}_f(t) + \frac{1}{2} \tau (v^\text{Gipps}_f(t) + v^\text{Gipps}_f(t + \tau)))$ we obtain the follower displacement time series and therefore the full follower trajectory (we define a trajectory as the displacement and velocity time series). Since our analysis depends only on the follower's displacement time series, we discard the velocity time series after this step.
 
