@@ -1,4 +1,4 @@
-Master's project investigating modern simulation-based inference (SBI) methods using simulation-based calibration (SBC).
+Master's project investigating the ability of simulation-based calibration (SBC) to validate modern simulation-based inference (SBI) methods.
 
 We apply modern SBI methods to a range of examples, consisting of both toy and real-world simulators. See below for a directory of the examples in this repository:
 
