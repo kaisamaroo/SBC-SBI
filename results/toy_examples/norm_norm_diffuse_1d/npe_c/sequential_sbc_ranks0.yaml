@@ -1,0 +1,6 @@
+N_iter: 3
+N_samp: 100
+num_sequential_rounds: 3
+num_simulations_per_round: 1000
+sigma: 150.0
+total_sbc_time: 36.178690875

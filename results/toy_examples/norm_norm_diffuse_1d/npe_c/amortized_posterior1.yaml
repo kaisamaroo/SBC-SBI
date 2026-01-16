@@ -1,0 +1,5 @@
+num_simulations: 100000
+sigma: 150.0
+simulation_time: 0.003568713553249836
+total_time: 439.6187315452844
+training_time: 439.61516283173114

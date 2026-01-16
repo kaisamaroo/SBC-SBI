@@ -1,0 +1,70 @@
+amortized_posterior_config:
+  amortized_posterior_config:
+    N: 200
+    bl: -4.0
+    leader_trajectory_ID: 0
+    ll: 7.5
+    num_simulations: 100
+    psi: 1.05
+    tau: 0.5
+  leader_trajectory_config:
+    N: 200
+    Vl: 30.0
+    al: 2.0
+    bl: -4.0
+    p_accel: 0.2
+    p_brake: 0.2
+    tau: 0.5
+    vl0: 10.0
+    xl0: 0.0
+  prior_config:
+    VL: 15.0
+    VU: 35.0
+    aL: 0.5
+    aU: 3.5
+    bL: -6.0
+    bU: -1.0
+    prior_alpha_sigmasquared: 1.0
+    prior_beta_sigmasquared: 3.0
+    prior_mean_mu: 0.0
+    prior_variance_mu: 9.0
+    vf0L: 5.0
+    vf0U: 25.0
+    xf0L: -60.0
+    xf0U: -10.0
+leader_trajectory_config:
+  N: 200
+  Vl: 30.0
+  al: 2.0
+  bl: -4.0
+  p_accel: 0.2
+  p_brake: 0.2
+  tau: 0.5
+  vl0: 10.0
+  xl0: 0.0
+prior_config:
+  VL: 15.0
+  VU: 35.0
+  aL: 0.5
+  aU: 3.5
+  bL: -6.0
+  bU: -1.0
+  prior_alpha_sigmasquared: 1.0
+  prior_beta_sigmasquared: 3.0
+  prior_mean_mu: 0.0
+  prior_variance_mu: 9.0
+  vf0L: 5.0
+  vf0U: 25.0
+  xf0L: -60.0
+  xf0U: -10.0
+sbc_config:
+  N: 200
+  N_iter: 100
+  N_samp: 100
+  amortized_posterior_ID: 0
+  bl: -4.0
+  leader_trajectory_ID: 0
+  ll: 7.5
+  psi: 1.05
+  tau: 0.5
+  test_function_name: projection0

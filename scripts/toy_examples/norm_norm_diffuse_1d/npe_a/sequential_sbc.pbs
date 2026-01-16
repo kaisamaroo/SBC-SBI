@@ -1,0 +1,24 @@
+#!/bin/bash
+#PBS -N sequential_sbc
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o sequential_sbc_most_recent.log
+
+
+sigma=${sigma:-150}
+N_iter=${N_iter:-100}
+N_samp=${N_samp:-100}
+num_sequential_rounds=${num_sequential_rounds:-4}
+num_simulations_per_round=${num_simulations_per_round:-5000}
+num_components=${num_components:-1}
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python sequential_sbc.py --sigma ${sigma} --N_iter ${N_iter} --N_samp ${N_samp} --num_sequential_rounds ${num_sequential_rounds} --num_simulations_per_round ${num_simulations_per_round} --num_components ${num_components}

@@ -1,0 +1,37 @@
+WARNING (pytensor.tensor.blas): Using NumPy C-API based implementation for BLAS functions.
+
+ Running SBC:
+SBC round 0 out of 10000 (0.0%)
+SBC round 1000 out of 10000 (10.0%)
+SBC round 2000 out of 10000 (20.0%)
+SBC round 3000 out of 10000 (30.0%)
+SBC round 4000 out of 10000 (40.0%)
+SBC round 5000 out of 10000 (50.0%)
+SBC round 6000 out of 10000 (60.0%)
+SBC round 7000 out of 10000 (70.0%)
+SBC round 8000 out of 10000 (80.0%)
+SBC round 9000 out of 10000 (90.0%)
+SBC complete
+
+ SBC finished.
+
+ Saving ranks to /rds/general/user/kjs22/home/SBC-SBI/results/toy_examples/norm_norm_diffuse_1d/npe_a/amortized_sbc_ranks1_amortized_posterior0.npy:
+
+ Ranks saved.
+
+ Saving config file to /rds/general/user/kjs22/home/SBC-SBI/results/toy_examples/norm_norm_diffuse_1d/npe_a/amortized_sbc_ranks1_amortized_posterior0.yaml:
+
+ Config file saved successfully.
+
+ Saving simulations to /rds/general/user/kjs22/home/SBC-SBI/results/toy_examples/norm_norm_diffuse_1d/npe_a/amortized_sbc_ranks1_amortized_posterior0_simulations.npz:
+
+ Simulations saved successfully.
+
+====================================
+CPU Time used: 00:00:07
+CPU Percent: 11%
+Memory usage: 621604kb
+Approx Power usage: 0.0
+Walltime usage: 00:01:36
+
+====================================

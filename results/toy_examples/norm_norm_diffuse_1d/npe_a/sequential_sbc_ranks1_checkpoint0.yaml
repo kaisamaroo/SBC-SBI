@@ -1,0 +1,6 @@
+N_iter: 100
+N_samp: 10000
+checkpoint_sbc_time: 4040.927747081965
+num_sequential_rounds: 4
+num_simulations_per_round: 5000
+sigma: 150.0

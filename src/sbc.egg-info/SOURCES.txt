@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+setup.cfg
+src/examples/__init__.py
+src/examples/gipps.py
+src/examples/mog_1d.py
+src/examples/norm_norm_diffuse_1d.py
+src/sbc/__init__.py
+src/sbc/sbc_tools.py
+src/sbc.egg-info/PKG-INFO
+src/sbc.egg-info/SOURCES.txt
+src/sbc.egg-info/dependency_links.txt
+src/sbc.egg-info/top_level.txt

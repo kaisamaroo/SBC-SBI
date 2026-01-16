@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N train_sequential_posterior
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o train_sequential_posterior_most_recent.log
+
+
+if [ -z "${x_observed}" ]; then
+    echo "ERROR: x_observed must be provided via qsub -v x_observed=..."
+    exit 1
+fi
+
+sigma=${sigma:-150}
+num_sequential_rounds=${num_sequential_rounds:-4}
+num_simulations_per_round=${num_simulations_per_round:-5000}
+num_components=${num_components}
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python train_sequential_posterior.py --sigma ${sigma} --num_sequential_rounds ${num_sequential_rounds} --num_simulations_per_round ${num_simulations_per_round} --num_components ${num_components} --x_observed ${x_observed}

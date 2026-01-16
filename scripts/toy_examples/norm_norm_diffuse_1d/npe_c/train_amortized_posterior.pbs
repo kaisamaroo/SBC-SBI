@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -N train_amortized_posterior
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o train_amortized_posterior_most_recent.log
+
+sigma=${sigma:-150}
+num_simulations=${num_simulations:-20000}
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python train_amortized_posterior.py --sigma ${sigma} --num_simulations ${num_simulations}
