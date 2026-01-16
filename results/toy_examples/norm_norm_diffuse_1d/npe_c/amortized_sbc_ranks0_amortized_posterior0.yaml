@@ -1,5 +1,3 @@
-N_iter: 100
-N_samp: 100
-amortized_posterior_ID: 0
-sigma: 150.0
-total_sbc_time: 0.16276862499999956
+version https://git-lfs.github.com/spec/v1
+oid sha256:6c3a156e5f12b99508f0e5d5a079c7a7f6adb35913489dfd5cc72c11cd111f94
+size 99

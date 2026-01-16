@@ -1,6 +1,3 @@
-num_components: 1
-num_simulations: 20000
-sigma: 150.0
-simulation_time: 0.0014267080000003318
-total_time: 27.053687416
-training_time: 27.052260708
+version https://git-lfs.github.com/spec/v1
+oid sha256:995ed356f4c6b9351fad3db9efad851996e0cb433f9de69a47d7d6e20146881d
+size 146

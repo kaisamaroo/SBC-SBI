@@ -1,11 +1,3 @@
-num_sequential_rounds: 3
-num_simulations_per_round: 33000
-sigma: 150.0
-simulation_times:
-- 0.001485154964029789
-- 0.22022072784602642
-- 0.20967375487089157
-total_time: 1368.5279600284994
-training_times:
-- 1368.0965803908184
-x_observed: 200.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:521f9db751849e80b501650bfe70c19c66930847341f51da672ce5c3b128b317
+size 242

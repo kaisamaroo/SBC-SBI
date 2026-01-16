@@ -32,7 +32,7 @@ def prior_pdf(theta, sigma):
     return np.exp(-(theta**2) / (2 * sigma**2)) / (np.sqrt(2 * np.pi) * sigma)
 
 
-# =====================================
+# =====================================git 
 # LIKELIHOOD: x | theta ~ N(theta, 1)
 # =====================================
 def likelihood_pdf(x, theta):

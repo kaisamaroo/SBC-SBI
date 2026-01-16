@@ -1,7 +1,3 @@
-N_iter: 3
-N_samp: 1000
-num_components: 1
-num_sequential_rounds: 3
-num_simulations_per_round: 1000
-sigma: 150.0
-total_sbc_time: 14.268018416999999
+version https://git-lfs.github.com/spec/v1
+oid sha256:41524a23505238246248c1cb9bdc3c435e1307a7ea84b3597c0cab6b06852eb9
+size 146

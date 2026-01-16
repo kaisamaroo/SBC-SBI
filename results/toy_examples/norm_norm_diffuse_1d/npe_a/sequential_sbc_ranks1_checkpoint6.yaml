@@ -1,6 +1,3 @@
-N_iter: 100
-N_samp: 10000
-checkpoint_sbc_time: 4228.033280821983
-num_sequential_rounds: 4
-num_simulations_per_round: 5000
-sigma: 150.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:dc2ede70bbf548fa127c749863841e725bfa72c382145e0f9924fd13ea81ce33
+size 135
