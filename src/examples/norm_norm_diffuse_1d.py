@@ -26,6 +26,13 @@ def make_prior(sigma, device=None):
             torch.tensor([0.]),
             torch.tensor([[sigma**2]])
         )
+    
+
+def true_posterior(sigma, x):
+        return torch.distributions.MultivariateNormal(
+            torch.tensor([x * sigma**2 / (1 + sigma**2)]),
+            torch.tensor([[sigma**2 / (1 + sigma**2)]])
+        )
 
 
 def prior_pdf(theta, sigma):
