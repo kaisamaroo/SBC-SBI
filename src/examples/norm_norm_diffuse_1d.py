@@ -350,3 +350,71 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
         plt.legend()
         plt.show()
     return ax
+
+
+def snpe_a_posterior_variance(x, sequential_posterior):
+    """
+    Return variance of posterior approximation for various possible observed x
+    
+    Note that this is the variance after the final proposal correction, and therefore may
+    become negative (well known issue with SNPE-A).
+    """
+    if not isinstance(x, torch.Tensor):
+        x = torch.tensor([float(x)])
+    x = x.view(-1,1)
+
+    # By default, sbi z-scores theta using an approximation to the prior variance
+    # We obtain this estimator sigma_hat below so that we can undo this transformation
+    sigma_hat = 1 / sequential_posterior.posterior_estimator._neural_net.net._transform._transforms[0]._scale
+    # Precision of proposal prior in z-scored theta space
+    latent_prec_proposal_prior = sequential_posterior.posterior_estimator._prec_pp.squeeze() # Precision of proposal prior
+    # Obtain precision of the (uncorrected) MDN
+    embedded_x = sequential_posterior.posterior_estimator._neural_net.net._embedding_net(x)
+    dist = sequential_posterior.posterior_estimator._neural_net.net._distribution
+    _, _, latent_prec_MDN, _, _ = dist.get_mixture_components(embedded_x) # Precision of density estimator
+    latent_prec_MDN = latent_prec_MDN.squeeze()
+    # Re-scale precisions using sigma_hat to undo z-scoring transformation
+    var_MDN = sigma_hat ** 2 / latent_prec_MDN
+    var_proposal_prior = sigma_hat ** 2 / latent_prec_proposal_prior
+    return 1 / ((1 / var_MDN) - (1 / var_proposal_prior))
+
+
+def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, ax=None):
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10,5))
+    x_range = torch.tensor(x_range)
+    posterior_variances = snpe_a_posterior_variance(x_range, sequential_posterior).detach()
+    ax.plot(x_range, np.where(posterior_variances >= 0, posterior_variances, np.nan), color="green", label="Positive posterior MDN variance (posterior well defined)")
+    ax.plot(x_range, np.where(posterior_variances < 0, posterior_variances, np.nan), color="red", label="Negative posterior MDN variance (posterior not defined)")
+    ax.axhline(0, color="k", linestyle="--")
+    ax.set_xlabel(r"$x_{observed}$")
+    ax.set_ylabel(r"Variance of posterior approximation $q_\phi(\theta | x_{observed})$")
+    ax.legend()
+    if ylim:
+        ax.set_ylim(ylim)
+    if not ax:
+        plt.show()
+    return ax
+
+
+def plot_sequential_samples(sequential_posterior_simulations, sequential_posterior_config, x_observed, sigma, axis_limits = None, alpha=0.5, ax=None):
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10,5))
+    num_sequential_rounds = sequential_posterior_config["num_sequential_rounds"]
+    num_simulations_per_round = sequential_posterior_config["num_simulations_per_round"]
+    for r in range(num_sequential_rounds):
+        parameter_samples = sequential_posterior_simulations[f"parameter_samples_round_{r}"]
+        data_samples = sequential_posterior_simulations[f"data_samples_round_{r}"]
+        ax.scatter(data_samples, parameter_samples, alpha=alpha, label=f"Round {r+1} samples" + (" (final round)" if r+1==num_sequential_rounds else ""))
+    true_posterior_param_samples = true_posterior(sigma, x_observed).sample((num_simulations_per_round,))
+    true_posterior_data_samples = simulator(true_posterior_param_samples)
+    ax.scatter(true_posterior_data_samples, true_posterior_param_samples, alpha=alpha, label="True posterior samples")
+    if axis_limits:
+        ax.set_xlim(axis_limits)
+        ax.set_ylim(axis_limits)
+    ax.legend()
+    ax.set_xlabel("x")
+    ax.set_ylabel(r"$\theta$")
+    if not ax:
+        plt.show()
+    return ax
