@@ -236,9 +236,9 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
                 # Plot samples from round r
                 if r == len(samples["parameter_samples"]) - 1:
                     # Plot final round samples black
-                    ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s, color="black")
+                    ax.scatter(data_samples, parameter_samples, label="Training data samples (final round)", alpha=0.6, s=s, color="black")
                 else:
-                    ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s)
+                    ax.scatter(data_samples, parameter_samples, label=f"Training data samples (round {r+1})", alpha=0.6, s=s)
         else:
             # Single-round samples (amortized model)
             parameter_samples = samples["parameter_samples"]
@@ -273,6 +273,7 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$\theta$")
     ax.set_xlim((np.min(x_range), np.max(x_range)))
+    ax.legend()
     if not ax:
         plt.legend()
         plt.show()
@@ -306,9 +307,9 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
                 # Plot samples from round r
                 if r == len(samples["parameter_samples"]) - 1:
                     # Plot final round samples black
-                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label=f"Training data samples (round {r})", alpha=0.6, s=s, color="black")
+                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples (final round)", alpha=0.6, s=s, color="black")
                 else:
-                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples (final round)", alpha=0.6, s=s)
+                    ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label=f"Training data samples (round {r+1})", alpha=0.6, s=s)
         else:
             # Single-round samples (amortized model)
             parameter_samples = samples["parameter_samples"]
@@ -346,6 +347,7 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$\theta$")
     ax.set_xlim((np.min(x_range), np.max(x_range)))
+    ax.legend()
     if not ax:
         plt.legend()
         plt.show()
@@ -379,7 +381,7 @@ def snpe_a_posterior_variance(x, sequential_posterior):
     return 1 / ((1 / var_MDN) - (1 / var_proposal_prior))
 
 
-def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, ax=None):
+def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, title=None, ax=None):
     if not ax:
         fig, ax = plt.subplots(figsize=(10,5))
     x_range = torch.tensor(x_range)
@@ -387,8 +389,11 @@ def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, ax=
     ax.plot(x_range, np.where(posterior_variances >= 0, posterior_variances, np.nan), color="green", label="Positive posterior MDN variance (posterior well defined)")
     ax.plot(x_range, np.where(posterior_variances < 0, posterior_variances, np.nan), color="red", label="Negative posterior MDN variance (posterior not defined)")
     ax.axhline(0, color="k", linestyle="--")
-    ax.set_xlabel(r"$x_{observed}$")
-    ax.set_ylabel(r"Variance of posterior approximation $q_\phi(\theta | x_{observed})$")
+    ax.set_xlabel("x")
+    ax.set_ylabel("Variance")
+    if not title:
+        title = r"Variance of SNPE-A posterior approximation $\tilde{\pi}(\theta | x)$ for different x."
+    ax.set_title(title)
     ax.legend()
     if ylim:
         ax.set_ylim(ylim)
@@ -397,7 +402,7 @@ def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, ax=
     return ax
 
 
-def plot_sequential_samples(sequential_posterior_simulations, sequential_posterior_config, x_observed, sigma, axis_limits = None, alpha=0.5, ax=None):
+def plot_sequential_samples(sequential_posterior_simulations, sequential_posterior_config, x_observed, sigma, plot_true_posterior=False, axis_limits = None, alpha=0.5, title=None, ax=None):
     if not ax:
         fig, ax = plt.subplots(figsize=(10,5))
     num_sequential_rounds = sequential_posterior_config["num_sequential_rounds"]
@@ -409,9 +414,19 @@ def plot_sequential_samples(sequential_posterior_simulations, sequential_posteri
     true_posterior_param_samples = true_posterior(sigma, x_observed).sample((num_simulations_per_round,))
     true_posterior_data_samples = simulator(true_posterior_param_samples)
     ax.scatter(true_posterior_data_samples, true_posterior_param_samples, alpha=alpha, label="True posterior samples")
+    if plot_true_posterior:
+        ax.axhline(x_observed*(sigma**2)/(1+sigma**2), color="k", label="True posterior mean", linestyle="--")
+        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) - 2*(sigma**2)/(1+sigma**2), color="blue", label="95% region", linestyle="--")
+        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) + 2*(sigma**2)/(1+sigma**2), color="blue", linestyle="--")
+        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) - 3*(sigma**2)/(1+sigma**2), color="red", label="99% region", linestyle="--")
+        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) + 3*(sigma**2)/(1+sigma**2), color="red", linestyle="--")
+        ax.axvline(x_observed, color="k", linestyle="--")
     if axis_limits:
         ax.set_xlim(axis_limits)
         ax.set_ylim(axis_limits)
+    if not title:
+        title = r"Training samples for each round of SNPE."
+    ax.set_title(title)
     ax.legend()
     ax.set_xlabel("x")
     ax.set_ylabel(r"$\theta$")

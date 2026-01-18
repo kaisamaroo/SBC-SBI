@@ -5,8 +5,10 @@ import torch
 from sbi.inference import NPE_A, NPE_C
 
 
-def plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title=None, ax=None):
+def plot_sbc_histogram(ranks, N_samp, title=None, ax=None):
     ranks = np.array(ranks)
+
+    N_iter = np.sum(1 - np.isnan(ranks))
 
     internally_defined_ax = False
     if not ax:
@@ -29,8 +31,10 @@ def plot_sbc_histogram(ranks, N_iter=1000, N_samp=250, title=None, ax=None):
     return ax
 
 
-def plot_sbc_ecdf(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=None):
+def plot_sbc_ecdf(ranks, N_samp, alpha=0.05, title=None, ax=None):
     ranks = np.array(ranks)
+
+    N_iter = np.sum(1 - np.isnan(ranks))
 
     internally_defined_ax = False
     if not ax:
@@ -67,8 +71,10 @@ def plot_sbc_ecdf(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=Non
     return ax
 
 
-def plot_sbc_ecdf_diff(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, ax=None):
+def plot_sbc_ecdf_diff(ranks, N_samp, alpha=0.05, title=None, ax=None):
     ranks = np.array(ranks)
+
+    N_iter = np.sum(1 - np.isnan(ranks))
 
     internally_defined_ax = False
     if not ax:
@@ -103,15 +109,15 @@ def plot_sbc_ecdf_diff(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None, a
     return ax
 
 
-def plot_sbc_all(ranks, N_iter=1000, N_samp=250, alpha=0.05, title=None):
+def plot_sbc_all(ranks, N_samp, alpha=0.05, title=None):
     ranks = np.array(ranks)
 
+    N_iter = np.sum(1 - np.isnan(ranks))
+    
     fig, ax = plt.subplots(figsize=(10, 5), ncols=3)
-
-    plot_sbc_histogram(ranks, N_iter=N_iter, N_samp=N_samp, title="Histogram", ax=ax[0])
-    plot_sbc_ecdf(ranks, N_iter=N_iter, N_samp=N_samp, alpha=alpha, title=f"ECDF with {100*(1-alpha)}% interval", ax=ax[1])
-    plot_sbc_ecdf_diff(ranks, N_iter=N_iter, N_samp=N_samp, alpha=alpha, title=f"ECDF - x with {100*(1-alpha)}% interval", ax=ax[2])
-
+    plot_sbc_histogram(ranks, N_samp=N_samp, title="Histogram", ax=ax[0])
+    plot_sbc_ecdf(ranks, N_samp=N_samp, alpha=alpha, title=f"ECDF with {100*(1-alpha)}% interval", ax=ax[1])
+    plot_sbc_ecdf_diff(ranks, N_samp=N_samp, alpha=alpha, title=f"ECDF - x with {100*(1-alpha)}% interval", ax=ax[2])
     if title:
         plt.suptitle(title)
     else:
