@@ -12,6 +12,7 @@ from pathlib import Path
 import pickle
 import yaml
 import os
+import time
 
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_c")
@@ -27,7 +28,12 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
         vf0L, vf0U,
         prior_mean_mu, prior_variance_mu,
         prior_alpha_sigmasquared, prior_beta_sigmasquared,
-        tau, N, ll, psi, bl):
+        tau, N, ll, psi, bl, checkpoint_percent):
+    
+    # Find next ID
+    i = 0
+    while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}.npy"):
+        i += 1
     
     prior_config = {
             "aL": aL,
@@ -53,6 +59,87 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                         vf0L, vf0U,
                         prior_mean_mu, prior_variance_mu,
                         prior_alpha_sigmasquared, prior_beta_sigmasquared)
+    
+    leader_trajectory_name = f"leader_trajectory{leader_trajectory_ID}"
+    path_to_leader_trajectory = trajectories_path + "/" + leader_trajectory_name + ".npz"
+    path_to_leader_trajectory_config = trajectories_path + "/" + leader_trajectory_name + ".yaml"
+
+    # Retrieve leader trajectory config
+    with open(path_to_leader_trajectory_config, "r") as f:
+        leader_trajectory_config = yaml.safe_load(f) # Dictionary
+
+    # Retrieve xl, vl
+    leader_trajectory = np.load(path_to_leader_trajectory)
+    xl = leader_trajectory["xl"]
+    vl = leader_trajectory["vl"]
+
+    # Retrieve test function
+    test_function = get_test_function(test_function_name)
+    # Ensure simulator is in correct format
+    simulator_ = lambda x: simulator(x, tau, N, ll, psi, xl, vl, bl)
+    
+    N_iter_per_checkpoint = int(N_iter * checkpoint_percent / 100)
+    sbc_checkpoint_times = []
+    ranks = []
+
+    print("\n Running SBC:")
+    for checkpoint_id in range(int(100 / checkpoint_percent)):
+        print(f"\n Running SBC checkpoint {checkpoint_id+1}:")
+
+        # Generate ranks
+        print("Generating ranks:")
+        start_time = time.perf_counter()
+        ranks_checkpoint = sbc_ranks_snpe_c(simulator_,
+                        prior,
+                        train_snpe_c_posterior,
+                        test_function=test_function,
+                        N_iter=N_iter_per_checkpoint,
+                        N_samp=N_samp,
+                        num_sequential_rounds=num_sequential_rounds,
+                        num_simulations_per_round=num_simulations_per_round,
+                        show_progress=True)
+        end_time = time.perf_counter()
+        ranks += list(ranks_checkpoint)
+        print("Ranks generated successfully.")
+        sbc_checkpoint_time = end_time - start_time
+        sbc_checkpoint_times.append(sbc_checkpoint_time)
+
+        sbc_config = {
+            "N_iter": N_iter_per_checkpoint,
+            "N_samp": N_samp,
+            "test_function_name": test_function_name,
+            "num_sequential_rounds": num_sequential_rounds,
+            "num_simulations_per_round": num_simulations_per_round,
+            "tau": tau, 
+            "N": N,
+            "ll": ll, 
+            "psi": psi,
+            "bl": bl, 
+            "leader_trajectory_ID": leader_trajectory_ID,
+            "checkpoint_sbc_time": sbc_checkpoint_time
+        }
+
+        config = {
+            "leader_trajectory_config": leader_trajectory_config,
+            "sbc_config": sbc_config,
+            "prior_config": prior_config
+        }
+
+        sequential_sbc_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}_checkpoint{checkpoint_id}" + ".npy"
+        config_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}_checkpoint{checkpoint_id}" + ".yaml"
+
+        print(f"Saving checkpoint ranks to {sequential_sbc_save_path}:")
+        np.save(sequential_sbc_save_path, ranks_checkpoint)
+        print("Checkpoint ranks saved successfully.")
+
+        print(f"Saving checkpoint config file to path {config_save_path}:")
+        with open(config_save_path, "w") as f:
+            yaml.safe_dump(config, f)
+        print("Checkpoint config file saved successfully.")
+        
+    print("\n SBC finished.")
+    total_sbc_time = sum(sbc_checkpoint_times)
+    ranks = np.array(ranks)
 
     sbc_config = {
         "N_iter": N_iter,
@@ -65,50 +152,15 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
         "ll": ll, 
         "psi": psi,
         "bl": bl, 
-        "leader_trajectory_ID": leader_trajectory_ID
+        "leader_trajectory_ID": leader_trajectory_ID,
+        "total_sbc_time": total_sbc_time
     }
-
-    leader_trajectory_name = f"leader_trajectory{leader_trajectory_ID}"
-    path_to_leader_trajectory = trajectories_path + "/" + leader_trajectory_name + ".npz"
-    path_to_leader_trajectory_config = trajectories_path + "/" + leader_trajectory_name + ".yaml"
-
-    # Retrieve leader trajectory config
-    with open(path_to_leader_trajectory_config, "r") as f:
-        leader_trajectory_config = yaml.safe_load(f) # Dictionary
 
     config = {
         "leader_trajectory_config": leader_trajectory_config,
         "sbc_config": sbc_config,
         "prior_config": prior_config
     }
-    
-    # Retrieve xl, vl
-    leader_trajectory = np.load(path_to_leader_trajectory)
-    xl = leader_trajectory["xl"]
-    vl = leader_trajectory["vl"]
-    
-    # Retrieve test function
-    test_function = get_test_function(test_function_name)
-    # Ensure simulator is in correct format
-    simulator_ = lambda x: simulator(x, tau, N, ll, psi, xl, vl, bl)
-
-    # Generate ranks
-    print("Generating ranks:")
-    ranks = sbc_ranks_snpe_c(simulator_,
-                    prior,
-                    train_snpe_c_posterior,
-                    test_function=test_function,
-                    N_iter=N_iter,
-                    N_samp=N_samp,
-                    num_sequential_rounds=num_sequential_rounds,
-                    num_simulations_per_round=num_simulations_per_round,
-                    show_progress=True)
-    print("Ranks generated successfully.")
-
-    # Find next ID
-    i = 0
-    while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}.npy"):
-        i += 1
 
     sequential_sbc_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npy"
     config_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
@@ -152,6 +204,8 @@ if __name__ == "__main__":
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
     parser.add_argument("--leader_trajectory_ID", type=int, required=True)
+    parser.add_argument("--checkpoint_percent", type=float, default=10)
+
 
     args = parser.parse_args()
     main(args.N_iter, args.N_samp, args.num_sequential_rounds, args.num_simulations_per_round,
@@ -163,4 +217,4 @@ if __name__ == "__main__":
         args.vf0L, args.vf0U,
         args.prior_mean_mu, args.prior_variance_mu,
         args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
-        args.tau, args.N, args.ll, args.psi, args.bl)
+        args.tau, args.N, args.ll, args.psi, args.bl, args.checkpoint_percent)

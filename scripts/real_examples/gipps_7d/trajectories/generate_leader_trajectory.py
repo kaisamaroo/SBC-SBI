@@ -57,6 +57,6 @@ if __name__ == "__main__":
     parser.add_argument("--p_accel", type=float, default=0.2)
     parser.add_argument("--p_brake", type=float, default=0.2)
     parser.add_argument("--tau", type=float, default=0.5)
-    parser.add_argument("--N", type=int, default=200)
+    parser.add_argument("--N", type=int, default=100)
     args = parser.parse_args()
     main(args.al, args.bl, args.Vl, args.xl0, args.vl0, args.p_accel, args.p_brake, args.tau, args.N)

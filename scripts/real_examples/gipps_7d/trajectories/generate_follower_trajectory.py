@@ -79,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--mu", type=float, default=0.8)
     parser.add_argument("--sigmasquared", type=float, default=0.25)
     parser.add_argument("--tau", type=float, default=0.5)
-    parser.add_argument("--N", type=int, default=200)
+    parser.add_argument("--N", type=int, default=100)
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)

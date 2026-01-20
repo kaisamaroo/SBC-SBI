@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument("--sigmasquaredU", type=float, default=3.) # THIS DOESN'T COINCIDE WITH PAPER SINCE THIS WAS MADE UNIFORM WHEN IT SHOULD BE GAMMA(1,3)
 
     parser.add_argument("--tau", type=float, default=0.5)
-    parser.add_argument("--N", type=int, default=200)
+    parser.add_argument("--N", type=int, default=100)
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
