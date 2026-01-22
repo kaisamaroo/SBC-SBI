@@ -28,7 +28,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
         vf0L, vf0U,
         prior_mean_mu, prior_variance_mu,
         prior_alpha_sigmasquared, prior_beta_sigmasquared,
-        tau, N, ll, psi, bl, checkpoint_percent):
+        tau, N, ll, psi, bl, checkpoint_percent, use_combined_loss):
     
     # Find next ID
     i = 0
@@ -97,6 +97,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                         N_samp=N_samp,
                         num_sequential_rounds=num_sequential_rounds,
                         num_simulations_per_round=num_simulations_per_round,
+                        use_combined_loss=use_combined_loss, # Using combined loss can help reduce leakage in models with compact prior supports
                         show_progress=True)
         end_time = time.perf_counter()
         ranks += list(ranks_checkpoint)
@@ -205,6 +206,7 @@ if __name__ == "__main__":
     parser.add_argument("--bl", type=float, default=-4.)
     parser.add_argument("--leader_trajectory_ID", type=int, required=True)
     parser.add_argument("--checkpoint_percent", type=float, default=10)
+    parser.add_argument("--use_combined_loss", type=bool, default=True)
 
 
     args = parser.parse_args()
@@ -217,4 +219,4 @@ if __name__ == "__main__":
         args.vf0L, args.vf0U,
         args.prior_mean_mu, args.prior_variance_mu,
         args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
-        args.tau, args.N, args.ll, args.psi, args.bl, args.checkpoint_percent)
+        args.tau, args.N, args.ll, args.psi, args.bl, args.checkpoint_percent, args.use_combined_loss)

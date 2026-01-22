@@ -113,7 +113,7 @@ def plot_sbc_all(ranks, N_samp, alpha=0.05, title=None):
     ranks = np.array(ranks)
 
     N_iter = np.sum(1 - np.isnan(ranks))
-    
+
     fig, ax = plt.subplots(figsize=(10, 5), ncols=3)
     plot_sbc_histogram(ranks, N_samp=N_samp, title="Histogram", ax=ax[0])
     plot_sbc_ecdf(ranks, N_samp=N_samp, alpha=alpha, title=f"ECDF with {100*(1-alpha)}% interval", ax=ax[1])
@@ -292,12 +292,14 @@ def sbc_ranks_snpe_a_and_samples(simulator,
     return ranks, samples_dict
 
 
-def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, show_progress=True):
+def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, use_combined_loss=False, show_progress=True):
     """
     Return x_obs-sequentially-trained SNPE-C posterior 
     """
     inference = NPE_C(prior)
     proposal = prior
+    if use_combined_loss:
+        print("\n Using combined loss.")
     for r in range(num_sequential_rounds):
         if show_progress:
             print(f"\n ------------- SEQUENTIAL ROUND {r+1} out of {num_sequential_rounds} -------------")
@@ -308,11 +310,11 @@ def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_s
             print("Training samples generated")
 
         if r == num_sequential_rounds - 1:
-            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
             # Final posterior shouldnt be conditioned on x_obs (so we can see how it infers other x)
             sequential_posterior = inference.build_posterior()
         else:
-            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
             sequential_posterior = inference.build_posterior().set_default_x(x_obs)
             proposal = sequential_posterior
     return sequential_posterior
@@ -326,6 +328,7 @@ def sbc_ranks_snpe_c(simulator,
                     N_samp=100,
                     num_sequential_rounds=4,
                     num_simulations_per_round=5000,
+                    use_combined_loss=False,
                     show_progress=True):
     """
     return normalized SBC ranks for SNPE-C
@@ -336,7 +339,7 @@ def sbc_ranks_snpe_c(simulator,
             print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
         prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
         simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-        posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round)
+        posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
         posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
         if test_function:
             rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
