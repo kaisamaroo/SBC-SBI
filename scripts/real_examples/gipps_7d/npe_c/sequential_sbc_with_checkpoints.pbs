@@ -1,0 +1,78 @@
+#!/bin/bash
+#PBS -N sequential_sbc_with_checkpoints
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o sequential_sbc_with_checkpoints_most_recent.log
+
+N_iter=${N_iter:-100}
+N_samp=${N_samp:-100}
+test_function_name=${test_function_name:-projection0}
+num_sequential_rounds=${num_sequential_rounds:-4}
+num_simulations_per_round=${num_simulations_per_round:-5000}
+
+aL=${aL:-0.5}
+aU=${aU:-3.5}
+bL=${bL:--6.0}
+bU=${bU:--1.0}
+VL=${VL:-15.0}
+VU=${VU:-35.0}
+xf0L=${xf0L:--60.0}
+xf0U=${xf0U:--10.0}
+vf0L=${vf0L:-5.0}
+vf0U=${vf0U:-25.0}
+
+prior_mean_mu=${prior_mean_mu:-0.0}
+prior_variance_mu=${prior_variance_mu:-9.0}
+prior_alpha_sigmasquared=${prior_alpha_sigmasquared:-1.0}
+prior_beta_sigmasquared=${prior_beta_sigmasquared:-3.0}
+
+tau=${tau:-0.5}
+N=${N:-100}
+ll=${ll:-7.5}
+psi=${psi:-1.05}
+bl=${bl:--4.0}
+checkpoint_percent=${checkpoint_percent:-10}
+
+# CANNOT TURN use_combined_loss INTO A PBS INPUT SINCE ITS A BOOL! USING DEFAULT HERE
+
+if [ -z "$leader_trajectory_ID" ]; then
+    echo "ERROR: leader_trajectory_ID is required"
+    exit 1
+fi
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python sequential_sbc_with_checkpoints.py \
+  --N_iter "$N_iter" \
+  --N_samp "$N_samp" \
+  --test_function_name "$test_function_name" \
+  --num_sequential_rounds "$num_sequential_rounds" \
+  --num_simulations_per_round "$num_simulations_per_round" \
+  --aL "$aL" \
+  --aU "$aU" \
+  --bL "$bL" \
+  --bU "$bU" \
+  --VL "$VL" \
+  --VU "$VU" \
+  --xf0L "$xf0L" \
+  --xf0U "$xf0U" \
+  --vf0L "$vf0L" \
+  --vf0U "$vf0U" \
+  --prior_mean_mu "$prior_mean_mu" \
+  --prior_variance_mu "$prior_variance_mu" \
+  --prior_alpha_sigmasquared "$prior_alpha_sigmasquared" \
+  --prior_beta_sigmasquared "$prior_beta_sigmasquared" \
+  --tau "$tau" \
+  --N "$N" \
+  --ll "$ll" \
+  --psi "$psi" \
+  --bl "$bl" \
+  --leader_trajectory_ID "$leader_trajectory_ID" \
+  --checkpoint_percent "$checkpoint_percent"

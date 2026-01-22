@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N sequential_sbc_with_checkpoints
 #PBS -l select=1:ncpus=1:mem=4gb
-#PBS -l walltime=01:00:00
+#PBS -l walltime=72:00:00
 #PBS -j oe
 #PBS -M kai.samaroo22@imperial.ac.uk
 #PBS -m bea
