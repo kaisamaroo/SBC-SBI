@@ -9,7 +9,7 @@
 
 N_iter=${N_iter:-100}
 N_samp=${N_samp:-100}
-test_function_name=${test_function_name:-projection0}
+test_function_name=${test_function_name:-all}
 num_sequential_rounds=${num_sequential_rounds:-4}
 num_simulations_per_round=${num_simulations_per_round:-5000}
 

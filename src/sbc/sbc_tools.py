@@ -213,33 +213,68 @@ def sbc_ranks_snpe_a(simulator,
     due to non-spd covariance matrices
     """
     failed_round_counter = 0
-    ranks = []
-    for i in range(N_iter):
-        if show_progress:
-            print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
-        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
-        simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-        try:
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, num_components)
+    if isinstance(test_function, list):
+        # Multiple test functions given
+        # test_function should be of the form [(test_function, test_function_name), ...]
+
+        # Ranks will be of form {"test_function_name": test_function_ranks, ...} (to be saved as .npz)
+        ranks = {_[1]: [] for _ in test_function}
+        for i in range(N_iter):
+            if show_progress:
+                print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+            prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+            simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             try:
-                posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
-                if test_function:
-                    rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
-                else:
-                    # If no test function provided, assume theta is 1D.
-                    rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
-                ranks.append(float(rank))
+                posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, num_components)
+                try:
+                    posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+                    # Calculate rank for each test function
+                    for test_function_, test_function_name_ in test_function:
+                        ranks[test_function_name_].append(
+                            float(torch.sum(test_function_(prior_sample) * torch.ones(N_samp) > test_function_(posterior_samples))/N_samp)
+                            )
+                except AssertionError:
+                    print(f"\n SBC ROUND {i+1} FINAL POSTERIOR NOT SPD! SKIPPING ROUND")
+                    ranks.append(np.nan)
+                    failed_round_counter += 1
             except AssertionError:
-                print(f"\n SBC ROUND {i+1} FINAL POSTERIOR NOT SPD! SKIPPING ROUND")
+                print(f"\n SBC ROUND {i+1} HAD A PROPOSAL PRIOR NOT SPD! SKIPPING ROUND")
                 ranks.append(np.nan)
                 failed_round_counter += 1
-        except AssertionError:
-            print(f"\n SBC ROUND {i+1} HAD A PROPOSAL PRIOR NOT SPD! SKIPPING ROUND")
-            ranks.append(np.nan)
-            failed_round_counter += 1
-    if show_progress:
-        print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
-    return ranks
+        if show_progress:
+            print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED ROUNDS" + 12*"-")
+        ranks = {k: np.array(v) for k, v in ranks.items()}
+        return ranks
+
+    else:
+        # Single (or no) test function given
+        ranks = []
+        for i in range(N_iter):
+            if show_progress:
+                print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+            prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+            simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+            try:
+                posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, num_components)
+                try:
+                    posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+                    if test_function:
+                        rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+                    else:
+                        # If no test function provided, assume theta is 1D.
+                        rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+                    ranks.append(float(rank))
+                except AssertionError:
+                    print(f"\n SBC ROUND {i+1} FINAL POSTERIOR NOT SPD! SKIPPING ROUND")
+                    ranks.append(np.nan)
+                    failed_round_counter += 1
+            except AssertionError:
+                print(f"\n SBC ROUND {i+1} HAD A PROPOSAL PRIOR NOT SPD! SKIPPING ROUND")
+                ranks.append(np.nan)
+                failed_round_counter += 1
+        if show_progress:
+            print("\n" + 12*"-" + f"FINISHED SBC WITH {failed_round_counter} FAILED RUNS" + 12*"-")
+        return np.array(ranks)
 
 
 def sbc_ranks_snpe_a_and_samples(simulator,
@@ -256,6 +291,8 @@ def sbc_ranks_snpe_a_and_samples(simulator,
     return normalized SBC ranks for SNPE-A, being careful to account for errors
     due to non-spd covariance matrices
     """
+    if isinstance(test_function, list):
+        raise NotImplementedError("Multiple test functions yet to be implenented.")
     failed_round_counter = 0
     ranks = []
     samples_dict = {}
@@ -333,23 +370,49 @@ def sbc_ranks_snpe_c(simulator,
     """
     return normalized SBC ranks for SNPE-C
     """
-    ranks = []
-    for i in range(N_iter):
+    if isinstance(test_function, list):
+        # Multiple test functions given
+        # test_function should be of the form [(test_function, test_function_name), ...]
+
+        # Ranks will be of form {"test_function_name": test_function_ranks, ...} (to be saved as .npz)
+        ranks = {_[1]: [] for _ in test_function}
+        for i in range(N_iter):
+            if show_progress:
+                print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+            prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+            simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
+            posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            # Calculate rank for each test function
+            for test_function_, test_function_name_ in test_function:
+                ranks[test_function_name_].append(
+                    float(torch.sum(test_function_(prior_sample) * torch.ones(N_samp) > test_function_(posterior_samples))/N_samp)
+                    )
         if show_progress:
-            print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
-        prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
-        simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-        posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
-        posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
-        if test_function:
-            rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
-        else:
-            # If no test function provided, assume theta is 1D.
-            rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
-        ranks.append(float(rank))
-    if show_progress:
-        print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
-    return ranks
+            print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
+        # Convert rank lists to np arrays
+        ranks = {k: np.array(v) for k, v in ranks.items()}
+        return ranks
+
+    else:
+        # Single (or no) test function given
+        ranks = []
+        for i in range(N_iter):
+            if show_progress:
+                print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
+            prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
+            simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
+            posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            if test_function:
+                rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
+            else:
+                # If no test function provided, assume theta is 1D.
+                rank = torch.sum(prior_sample.item() * torch.ones_like(posterior_samples) > posterior_samples)/N_samp
+            ranks.append(float(rank))
+        if show_progress:
+            print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
+        return np.array(ranks)
 
 
 def sbc_ranks_snpe_c_and_samples(simulator,
@@ -364,6 +427,8 @@ def sbc_ranks_snpe_c_and_samples(simulator,
     """
     return normalized SBC ranks for SNPE-C
     """
+    if isinstance(test_function, list):
+        raise NotImplementedError("Multiple test functions yet to be implenented.")
     ranks = []
     samples_dict = {}
     for i in range(N_iter):

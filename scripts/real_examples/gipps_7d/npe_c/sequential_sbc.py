@@ -5,7 +5,7 @@ from sbi.inference import NPE_C
 import scipy
 from torch.distributions import Exponential, Normal, InverseGamma, MultivariateNormal
 from sbi.utils import BoxUniform, MultipleIndependent
-from examples.gipps import make_prior_7d_npe_c, simulator, get_test_function
+from examples.gipps import make_prior_7d_npe_c, simulator, get_test_function, all_test_function_names
 from sbc.sbc_tools import sbc_ranks_snpe_c, train_snpe_c_posterior
 import argparse
 from pathlib import Path
@@ -57,7 +57,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
     sbc_config = {
         "N_iter": N_iter,
         "N_samp": N_samp,
-        "test_function_name": test_function_name,
+        "test_function_name": all_test_function_names if test_function_name=="all" else test_function_name,
         "num_sequential_rounds": num_sequential_rounds,
         "num_simulations_per_round": num_simulations_per_round,
         "tau": tau, 
@@ -88,12 +88,19 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
     vl = leader_trajectory["vl"]
     
     # Retrieve test function
-    test_function = get_test_function(test_function_name)
+    if test_function_name=="all":
+        print("Using all test functions")
+        test_function = [(get_test_function(_test_function_name), _test_function_name) for _test_function_name in all_test_function_names]
+    else:
+        print("Using test function:" + test_function_name)
+        test_function = get_test_function(test_function_name)
+
     # Ensure simulator is in correct format
     simulator_ = lambda x: simulator(x, tau, N, ll, psi, xl, vl, bl)
 
     # Generate ranks
     print("Generating ranks:")
+    # Ranks will be 1) a np array (if single test function) or 2) a dict of np arrays (if test_function_name is "all")
     ranks = sbc_ranks_snpe_c(simulator_,
                     prior,
                     train_snpe_c_posterior,
@@ -107,16 +114,22 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
 
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}.npy"):
+    while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}.npy") \
+        or os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}.npz"):
         i += 1
 
-    sequential_sbc_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npy"
+    if isinstance(ranks, dict):
+        sequential_sbc_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npz"
+        print(f"Saving ranks to {sequential_sbc_save_path}:")
+        np.savez(sequential_sbc_save_path, **ranks)
+        print("Ranks saved successfully.")
+    else:
+        sequential_sbc_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npy"
+        print(f"Saving ranks to {sequential_sbc_save_path}:")
+        np.save(sequential_sbc_save_path, ranks)
+        print("Ranks saved successfully.")
+
     config_save_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
-
-    print(f"Saving ranks to {sequential_sbc_save_path}:")
-    np.save(sequential_sbc_save_path, ranks)
-    print("Ranks saved successfully.")
-
     print(f"Saving config file to path {config_save_path}:")
     with open(config_save_path, "w") as f:
         yaml.safe_dump(config, f)
@@ -127,7 +140,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--N_iter", type=int, default=100)
     parser.add_argument("--N_samp", type=int, default=100)
-    parser.add_argument("--test_function_name", type=str, default="projection0")
+    parser.add_argument("--test_function_name", type=str, default="all")
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
 

@@ -213,6 +213,7 @@ def test_function_squared_norm(theta):
         return torch.sum(theta**2, axis=1)
 
 
+# UPDATE THIS ALONG WITH all_test_function_names
 def get_test_function(test_function_name="projection0"):
     for i in range(7):
         if test_function_name == f"projection{i}":
@@ -221,3 +222,7 @@ def get_test_function(test_function_name="projection0"):
         return test_function_squared_norm
     else:
         raise NotImplementedError("No matching test function.")
+    
+# UPDATE THIS ALONG WITH get_test_function
+all_test_function_names = [f"projection{i}" for i in range(7)] \
+                        + ["squared_norm"]
