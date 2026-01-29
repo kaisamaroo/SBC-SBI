@@ -36,6 +36,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
     prior = make_prior(sigma)
     print("\n Running SBC:")
     for n in range(N_iter):
+        print(f"\n SBC round {n} out of {N_iter}")
+        print("\n Generating rank")
         start_time = time.perf_counter()
         rank_sequential, sample_dict = sbc_ranks_snpe_c_and_samples(simulator,
                                 prior,
@@ -47,6 +49,7 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                                 num_simulations_per_round=num_simulations_per_round,
                                 show_progress=False)
         end_time = time.perf_counter()
+        print("\n Rank generated")
         sbc_time = end_time - start_time
         rank_sequential = rank_sequential[0] # Get float rank
         if (n == 0) and (not continue_experiment):
@@ -87,6 +90,16 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
             config = dict(config)
+            # Assert that hyperparameters are equal
+            if n==0:
+                # If we are appending to an existing experiment, we must assert that
+                # all hyperparameters are equal. If not, it's not sensible to append simulations.
+                assert(
+                    config["N_samp"] == N_samp
+                    and config["sigma"] == sigma
+                    and config["num_sequential_rounds"] == num_sequential_rounds
+                    and config["num_simulations_per_round"] == num_simulations_per_round
+                )
             old_N_iter = config["N_iter"] # For simulation indexing
             # Update config
             config["N_iter"] += 1
@@ -105,7 +118,6 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             samples_dict[f"posterior_samples_round_{old_N_iter}"] = sample_dict["posterior_samples_round_0"]
             # Save simulations
             np.savez(simulations_path, **samples_dict)
-            
     print("\n SBC finished.")
 
 

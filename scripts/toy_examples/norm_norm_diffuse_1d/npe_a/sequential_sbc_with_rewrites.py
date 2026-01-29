@@ -92,6 +92,17 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
             config = dict(config)
+            # Assert that hyperparameters are equal
+            if n==0:
+                # If we are appending to an existing experiment, we must assert that
+                # all hyperparameters are equal. If not, it's not sensible to append simulations.
+                assert(
+                    config["N_samp"] == N_samp
+                    and config["sigma"] == sigma
+                    and config["num_sequential_rounds"] == num_sequential_rounds
+                    and config["num_simulations_per_round"] == num_simulations_per_round
+                    and config["num_components"] == num_components
+                )
             old_N_iter = config["N_iter"] # For simulation indexing
             # Update config
             config["N_iter"] += 1
