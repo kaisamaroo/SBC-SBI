@@ -14,7 +14,12 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "norm_norm_diffuse_1d" / "npe_a")
 
 
-def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, num_components):
+def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, num_components):    
+    # Find next ID
+    i = 0
+    while os.path.exists(results_path + f"/sequential_sbc_ranks{i}.npy"):
+        i += 1
+
     prior = make_prior(sigma)
     print("\n Running SBC:")
     start_time = time.perf_counter()
@@ -40,11 +45,6 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
               "num_simulations_per_round": num_simulations_per_round,
               "num_components": num_components,
               "total_sbc_time": total_sbc_time}
-    
-    # Find next ID
-    i = 0
-    while os.path.exists(results_path + f"/sequential_sbc_ranks{i}.npy"):
-        i += 1
 
     sequential_sbc_save_path = results_path + f"/sequential_sbc_ranks{i}.npy"
     config_save_path = results_path + f"/sequential_sbc_ranks{i}.yaml"
