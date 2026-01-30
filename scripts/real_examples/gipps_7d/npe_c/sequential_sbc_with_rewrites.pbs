@@ -34,7 +34,7 @@ N=${N:-100}
 ll=${ll:-7.5}
 psi=${psi:-1.05}
 bl=${bl:--4.0}
-example_ID=${example_ID:--1}
+experiment_ID=${example_ID:--1}
 
 # CANNOT TURN use_combined_loss INTO A PBS INPUT SINCE ITS A BOOL! USING DEFAULT HERE
 

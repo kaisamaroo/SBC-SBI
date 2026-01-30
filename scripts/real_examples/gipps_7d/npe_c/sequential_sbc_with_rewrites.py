@@ -102,22 +102,34 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
     for n in range(N_iter):
         print(f"\n SBC round {n} out of {N_iter}")
         print("\n Generating rank")
-        start_time = time.perf_counter()
-        rank = sbc_ranks_snpe_c(simulator_,
-                        prior,
-                        train_snpe_c_posterior,
-                        test_function=test_function,
-                        N_iter=1,
-                        N_samp=N_samp,
-                        num_sequential_rounds=num_sequential_rounds,
-                        num_simulations_per_round=num_simulations_per_round,
-                        use_combined_loss=use_combined_loss, # Using combined loss can help reduce leakage in models with compact prior supports
-                        show_progress=False)
-        print("rank:")
-        print(rank) ########
-        end_time = time.perf_counter()
-        print("\n Rank generated")
-        sbc_time = end_time - start_time
+        
+        # Try to generate rank
+        try:
+            start_time = time.perf_counter()
+            rank = sbc_ranks_snpe_c(simulator_,
+                            prior,
+                            train_snpe_c_posterior,
+                            test_function=test_function,
+                            N_iter=1,
+                            N_samp=N_samp,
+                            num_sequential_rounds=num_sequential_rounds,
+                            num_simulations_per_round=num_simulations_per_round,
+                            use_combined_loss=use_combined_loss, # Using combined loss can help reduce leakage in models with compact prior supports
+                            show_progress=False)
+            end_time = time.perf_counter()
+            sbc_time = end_time - start_time
+            print("\n Rank generated")
+        # If assertion error, set all ranks to np.nan
+        except AssertionError as e:
+            print(f"\n SBC ROUND {n} FAILED! SKIPPING ROUND.")
+            print(f"\n Assertion error: {e}")
+            sbc_time = np.nan
+            if test_function_name == "all":
+                # make rank dict of np.nans
+                rank = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
+            else:
+                rank = [np.nan]
+            print("\n Rank generation failed.")
 
         if (n == 0) and (not continue_experiment):
             sbc_config = {
@@ -133,7 +145,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                     "bl": bl, 
                     "leader_trajectory_ID": leader_trajectory_ID,
                     "sbc_times": [sbc_time],
-                    "total_sbc_time": sbc_time
+                    "total_sbc_time": sbc_time if not np.isnan(sbc_time) else 0
                 }
 
             config = {
@@ -160,8 +172,6 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
             ranks = np.load(ranks_path)
             if isinstance(rank, dict):
                 ranks = dict(ranks)
-                print("ranks:")
-                print(ranks)
                 # Update ranks by appending new rank
                 for test_function_name_ in ranks:
                     ranks[test_function_name_] = list(ranks[test_function_name_])
@@ -202,11 +212,11 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                 else:
                     assert config["sbc_config"]["test_function_name"] == test_function_name
 
-            old_N_iter = config["sbc_config"]["N_iter"] # For simulation indexing
             # Update config
             config["sbc_config"]["N_iter"] += 1
             config["sbc_config"]["sbc_times"].append(sbc_time)
-            config["sbc_config"]["total_sbc_time"] += sbc_time
+            if not np.isnan(sbc_time):
+                config["sbc_config"]["total_sbc_time"] += sbc_time
             # Save updated config
             with open(config_path, "w") as f:
                 yaml.safe_dump(config, f)
