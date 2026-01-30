@@ -34,7 +34,7 @@ N=${N:-100}
 ll=${ll:-7.5}
 psi=${psi:-1.05}
 bl=${bl:--4.0}
-experiment_ID=${example_ID:--1}
+experiment_ID=${experiment_ID:--1}
 
 # CANNOT TURN use_combined_loss INTO A PBS INPUT SINCE ITS A BOOL! USING DEFAULT HERE
 
@@ -75,4 +75,4 @@ python sequential_sbc_with_rewrites.py \
   --psi "$psi" \
   --bl "$bl" \
   --leader_trajectory_ID "$leader_trajectory_ID" \
-  --example_ID "$example_ID"
+  --experiment_ID "$experiment_ID"
