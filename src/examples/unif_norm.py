@@ -63,8 +63,6 @@ def get_approximate_posterior_density(posterior):
 
 
 
-
-
 def plot_approximate_posterior_old(approximate_posterior, prior_pdf, posterior_pdf, theta_range, x_observed, sigma, title=None, ax=None):
     """
     For sbi posterior implementations

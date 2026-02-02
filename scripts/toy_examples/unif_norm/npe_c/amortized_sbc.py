@@ -14,6 +14,9 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
 
+######################## NEEDS FINISHING!!!!!!!!!!!!!!!
+
+
 def main(N_iter, N_samp, sigma, amortized_posterior_ID, n, d, L, U):
     prior = make_prior(L=L, U=U, d=d)
     amortized_posterior_path = results_path + f"/amortized_posterior{amortized_posterior_ID}.pkl"

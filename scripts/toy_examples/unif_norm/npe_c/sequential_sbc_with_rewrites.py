@@ -13,6 +13,7 @@ import time
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
+######################## NEEDS FINISHING!!!!!!!!!!!!!!!
 
 def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, experiment_ID, n, d, L, U):
     # By default, experiment_ID is -1, meaning we start a new experiment ID.

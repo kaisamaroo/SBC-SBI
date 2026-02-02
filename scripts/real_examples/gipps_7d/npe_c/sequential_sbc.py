@@ -143,6 +143,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_function_name", type=str, default="all")
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
+    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
 
     parser.add_argument("--aL", type=float, default=0.5)
     parser.add_argument("--aU", type=float, default=3.5)
@@ -164,7 +165,6 @@ if __name__ == "__main__":
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
-    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
 
     args = parser.parse_args()
     main(args.N_iter, args.N_samp, args.num_sequential_rounds, args.num_simulations_per_round,

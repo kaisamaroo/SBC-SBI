@@ -130,7 +130,9 @@ if __name__ == "__main__":
     parser.add_argument("--N_iter", type=int, default=100)
     parser.add_argument("--N_samp", type=int, default=100)
     parser.add_argument("--test_function_name", type=str, default="projection0")
-
+    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
+    parser.add_argument("--amortized_posterior_ID", type=int, required=True)
+    
     parser.add_argument("--aL", type=float, default=0.5)
     parser.add_argument("--aU", type=float, default=3.5)
     parser.add_argument("--bL", type=float, default=-6.)
@@ -151,8 +153,6 @@ if __name__ == "__main__":
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
-    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
-    parser.add_argument("--amortized_posterior_ID", type=int, required=True)
 
     args = parser.parse_args()
     main(args.N_iter, args.N_samp, args.amortized_posterior_ID, args.leader_trajectory_ID, args.test_function_name,

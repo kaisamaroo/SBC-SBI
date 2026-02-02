@@ -133,9 +133,13 @@ def main(num_sequential_rounds, num_simulations_per_round,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    # TRAINING PARAMETERS
+    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
+    parser.add_argument("--follower_trajectory_ID", type=int, required=True)
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
 
+    # PRIOR PARAMETERS
     parser.add_argument("--aL", type=float, default=0.5)
     parser.add_argument("--aU", type=float, default=3.5)
     parser.add_argument("--bL", type=float, default=-6.)
@@ -150,15 +154,12 @@ if __name__ == "__main__":
     parser.add_argument("--prior_variance_mu", type=float, default=9.)
     parser.add_argument("--prior_alpha_sigmasquared", type=float, default=1.)
     parser.add_argument("--prior_beta_sigmasquared", type=float, default=3.)
-
+    # GLOBAL PARAMETERS
     parser.add_argument("--tau", type=float, default=0.5)
     parser.add_argument("--N", type=int, default=100)
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
-    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
-    parser.add_argument("--follower_trajectory_ID", type=int, required=True)
-
 
     args = parser.parse_args()
     main(args.num_sequential_rounds, args.num_simulations_per_round,
