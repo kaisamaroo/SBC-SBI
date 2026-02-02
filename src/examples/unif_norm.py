@@ -10,20 +10,10 @@ from scipy.interpolate import interp1d
 
 
 # Define simulator
-def simulator(mu, sigma=1, n=1, d=1):
+def simulator(mu, sigma=1, d=1):
     dist = MultivariateNormal(loc=mu,
                            covariance_matrix=sigma**2 * torch.eye(d))
-    x = dist.sample((n,))
-    if mu.ndim == 1:
-        # single parameter passed
-        # x will be size (n, d)
-        x = x.reshape(-1) # flatten to size (nd,) since sbi requires this
-    else:
-        # batch of parameters passed
-        # x will be size (n, batch_size, d)
-        batch_size = mu.shape[0]
-        x = x.permute(1, 0, 2) # size (batch_size, n, d)
-        x = x.reshape(batch_size, -1) # flatten to size (batch_size, nd) since sbi requires this
+    x = dist.sample() # shape(batch_size, d)
     return x
 
 
@@ -40,6 +30,12 @@ def prior_pdf(mu, L=-1, U=1, d=1):
         return 1/2**d
     else:
         return 0
+    
+
+def true_posterior_pdf(mu, x, L=-1.0, U=1.0, sigma=1.0):
+    a = (L - x) / sigma
+    b = (U - x) / sigma
+    return scipy.stats.truncnorm.pdf(mu, a, b, loc=x, scale=sigma)
 
 
 def get_approximate_posterior_density(posterior):

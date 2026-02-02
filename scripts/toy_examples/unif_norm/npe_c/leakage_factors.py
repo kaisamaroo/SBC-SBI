@@ -12,13 +12,14 @@ import yaml
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
-def main(sigma, num_simulations, d, L, U, force_first_round_loss):
+
+def train_amortized_posterior(sigma, num_simulations, d, L, U, force_first_round_loss):
     prior = make_prior(L=L, U=U, d=d)
     inference = NPE_C(prior=prior)
     print("\n Generating samples:")
     t0 = time.perf_counter()
     parameter_samples = prior.sample((num_simulations,))  # shape (num_simulations, d)
-    data_samples = simulator(parameter_samples, sigma=sigma, d=d)  # shape (num_simulations, d)
+    data_samples = simulator(parameter_samples, sigma=sigma, d=d)  # shape (num_simulations, nd)
     print("\n Samples generated successfully.")
     t1 = time.perf_counter()
     print("\n Training posterior:")
@@ -43,48 +44,42 @@ def main(sigma, num_simulations, d, L, U, force_first_round_loss):
             "U": U,
             "force_first_round_loss": force_first_round_loss}
     
+    return amortized_posterior, density_estimator, config
+
+
+def main(sigma, num_simulations_list, n, d, L, U):
+    multiple_amortized_posteriors_dict = {"amortized_posteriors": [],
+                      "density_estimators": [],
+                      "configs": []}
+
+    for num_simulations in num_simulations_list:
+        amortized_posterior, density_estimator, config = train_amortized_posterior(sigma, num_simulations, n, d, L, U)
+        multiple_amortized_posteriors_dict["amortized_posteriors"].append(amortized_posterior)
+        multiple_amortized_posteriors_dict["density_estimators"].append(density_estimator)
+        multiple_amortized_posteriors_dict["configs"].append(config)
+    
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/amortized_posterior{i}.pkl"):
+    while os.path.exists(results_path + f"/multiple_amortized_posteriors_dict{i}.pkl"):
         i += 1
 
     # Define save paths
-    amortized_posterior_save_path = results_path + f"/amortized_posterior{i}.pkl"
-    amortized_density_estimator_path = results_path + f"/amortized_posterior{i}_density_estimator.pkl"
-    config_save_path = results_path + f"/amortized_posterior{i}.yaml"
-    simulations_save_path = results_path + f"/amortized_posterior{i}_simulations.npz"
+    multiple_amortized_posteriors_dict_save_path = results_path + f"/multiple_amortized_posteriors_dict{i}.pkl"
 
-    print(f"\n Saving trained posterior to {amortized_posterior_save_path}:")
-    with open(amortized_posterior_save_path, "wb") as handle:
-        pickle.dump(amortized_posterior, handle)
-    print("\n Posterior saved successfully.")
+    print(f"\n Saving dictionary of posteriors, density estimators, and configs to {multiple_amortized_posteriors_dict_save_path}:")
+    with open(multiple_amortized_posteriors_dict_save_path, "wb") as handle:
+        pickle.dump(multiple_amortized_posteriors_dict, handle)
+    print("\n Saved successfully.")
 
-    print(f"\n Saving trained density estimator to {amortized_density_estimator_path}:")
-    with open(amortized_density_estimator_path, "wb") as handle:
-        pickle.dump(density_estimator, handle)
-    print("\n Density estimator saved successfully.")
-
-    print(f"\n Saving config file to {config_save_path}:")
-    with open(config_save_path, "w") as f:
-        yaml.safe_dump(config, f)
-    print("\n Config file saved successfully.")
-
-    # Save simulations:
-    print(f"\n Saving simulations to {simulations_save_path}:")
-    np.savez(simulations_save_path,
-             parameter_samples=parameter_samples,
-             data_samples=data_samples)
-    print("\n Simulations saved successfully.")
-    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_simulations", type=int, default=20000)
+    parser.add_argument("--num_simulations_list", type=list, default=[10, 25, 50, 75, 100, 200, 500, 1000])
     parser.add_argument("--sigma", type=float, default=1.)
     parser.add_argument("--d", type=int, default=1)
     parser.add_argument("--L", type=float, default=-1.)
     parser.add_argument("--U", type=float, default=1.)
-    parser.add_argument("--force_first_round_loss", type=bool, default=False) # Use atomic loss by default
-
+    parser.add_argument("--force_first_round_loss", type=bool, default=False)
+    
     args = parser.parse_args()
-    main(args.sigma, args.num_simulations, args.d, args.L, args.U, args.force_first_round_loss)
+    main(args.sigma, args.num_simulations_list, args.d, args.L, args.U, args.force_first_round_loss)
