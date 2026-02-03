@@ -51,7 +51,7 @@ def main(sigma, num_simulations, d, L, U, num_simulations_list, d_list, force_fi
         raise ValueError("EXACTLY ONE OF num_simulations_list AND d_list HAS TO BE INPUT! Currently, both were input.")
     
     elif isinstance(num_simulations_list, list):
-        # Only allow user to pass x_observed if they are varying num_simulations (don't allow if d is being varies)
+        # Force user to pass x_observed if they are varying num_simulations (don't allow if d is being varies)
         if not x_observed:
             # FUTURE: Could implement so that this samples from prior if x_observed isnt input
             raise AssertionError("x_observed MUST BE INPUT IF num_simulations IS BEING VARIED!")
@@ -76,13 +76,12 @@ def main(sigma, num_simulations, d, L, U, num_simulations_list, d_list, force_fi
             leakage_factor_dict[f"num_simulations = {num_simulations}"] = leakage_factors
                 
     elif isinstance(d_list, list):
-        # Cannot specift x_observed if d is being varied
+        # Cannot specify x_observed if d is being varied
         if x_observed:
-            # FUTURE: Could implement so that this samples from prior if x_observed isnt input
             raise AssertionError("CANNOT INPUT x_observed IF d IS BEING VARIED!")
         for d in d_list:
             print(f"\n d = {d}:")
-            # sample conditioner from prior
+            # sample conditioner from prior predictive
             prior = make_prior(L=L, U=U, d=d)
             true_mu = prior.sample() # shape torch.size([d])
             x_observed = simulator(true_mu, sigma=sigma, d=d) # shape torch.size([d])

@@ -14,10 +14,7 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
 
-######################## NEEDS FINISHING!!!!!!!!!!!!!!!
-
-
-def main(N_iter, N_samp, sigma, amortized_posterior_ID, n, d, L, U):
+def main(N_iter, N_samp, sigma, amortized_posterior_ID, d, L, U):
     prior = make_prior(L=L, U=U, d=d)
     amortized_posterior_path = results_path + f"/amortized_posterior{amortized_posterior_ID}.pkl"
     # Retrieve amortized posterior
@@ -26,7 +23,7 @@ def main(N_iter, N_samp, sigma, amortized_posterior_ID, n, d, L, U):
     print("\n Running SBC:")
     start_time = time.perf_counter()
     # Get simulator in required form
-    simulator_ = lambda x: simulator(x, sigma=sigma, n=n, d=d)
+    simulator_ = lambda x: simulator(x, sigma=sigma, d=d)
     ranks, samples_dict = sbc_ranks_and_samples(model=simulator_, prior=prior, posterior=amortized_posterior, N_iter=N_iter, N_samp=N_samp, show_progress=True)
     end_time = time.perf_counter()
     print("\n SBC finished.")
@@ -38,7 +35,6 @@ def main(N_iter, N_samp, sigma, amortized_posterior_ID, n, d, L, U):
               "sigma": sigma,
               "amortized_posterior_ID": amortized_posterior_ID,
               "total_sbc_time": total_sbc_time,
-              "n": n,
               "d": d,
               "L": L,
               "U": U}
@@ -73,10 +69,9 @@ if __name__ == "__main__":
     parser.add_argument("--N_iter", type=int, default=1000)
     parser.add_argument("--N_samp", type=int, default=1000)
     parser.add_argument("--sigma", type=float, default=1.)
-    parser.add_argument("--n", type=int, default=1)
     parser.add_argument("--d", type=int, default=1)
     parser.add_argument("--L", type=float, default=-1.)
     parser.add_argument("--U", type=float, default=1.)
     args = parser.parse_args()
     main(args.N_iter, args.N_samp, args.sigma, args.amortized_posterior_ID,
-         args.n, args.d, args.L, args.U)
+         args.d, args.L, args.U)

@@ -54,222 +54,17 @@ def get_approximate_posterior_density(posterior):
     return approximate_posterior_amortized
 
 
-
-
-
-
-
-
-
-
-
-def plot_approximate_posterior_old(approximate_posterior, prior_pdf, posterior_pdf, theta_range, x_observed, sigma, title=None, ax=None):
-    """
-    For sbi posterior implementations
-    
-    approximate_posterior should be a function with 2 arguments (theta, x)
-
-    x_observed should either be a Number or a list/array of Numbers
-
-    theta_range should be 1D a torch tensor
-    """
-    if isinstance(x_observed, Number):
-        x_observed = torch.tensor([x_observed]) # Observed data
-        if not ax:
-            fig, ax = plt.subplots(figsize=(10,5), dpi=150)
-
-        # Plot prior
-        ax.plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-        # Plot true posterior
-        ax.plot(theta_range, posterior_pdf(theta_range, x_observed, sigma), label="posterior with $2\sigma$ region", color="red", linestyle="--")
-
-        # Plot 2 sigma confidence interval of posterior
-        post_mean = (sigma**2 / (1 + sigma**2)) * x_observed.item()
-        post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-        ax.plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-        # Plot posterior approximation
-        ax.plot(theta_range, approximate_posterior(theta_range, x_observed), color="green", label="approximate posterior")
-        ax.set_xlabel(r"$\theta$")
-        if title:
-            ax.set_title(title)
-        else:
-            ax.set_title(fr"Posterior approximation")
-    else:
-        if len(x_observed)%2 != 0:
-            raise ValueError("Must have even number of x_observed for plotting.")
-        if ax:
-            raise NotImplementedError("Cannot pass an ax if you are plotting the posterior for multiple x.")
-        fig, ax = plt.subplots(nrows=int(len(x_observed)/2), ncols=2, figsize=(8, 8), dpi=150)
-        for k, x_obs in enumerate(x_observed):
-            x_obs = torch.tensor([x_obs])
-            i, j = k//2, k%2 # Coordinates for plotting
-
-            # Plot prior
-            ax[i,j].plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-            # Plot posterior
-            ax[i,j].plot(theta_range, posterior_pdf(theta_range, x_obs, sigma), label=f"posterior with $2\sigma$ region", color="red", linestyle="--")
-
-            # Plot 2 sigma confidence interval of posterior
-            post_mean = (sigma**2 / (1 + sigma**2)) * x_obs.item()
-            post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-            ax[i,j].plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-            # Plot posterior approximation
-            ax[i,j].plot(theta_range, approximate_posterior(theta_range, x_obs), color="green", label="approximate posterior")
-            ax[i,j].set_xlabel(r"$\theta$")
-            ax[i,j].set_title(r"$x_{obs} =$" + f" {x_obs.item()}")
-        if title:
-            plt.suptitle(title)
-        else:
-            plt.suptitle(fr"Posterior approximation")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    return ax
-
-
-def plot_approximate_posterior(approximate_posterior, prior_pdf, posterior_pdf, theta_range, x_observed, sigma, title=None, ax=None):
-    """
-    For sbi posterior implementations
-    
-    approximate_posterior should be a function with 2 arguments (theta, x)
-
-    x_observed should be a Number
-    """
-    x_observed = torch.tensor([x_observed]) # Observed data
-    user_given_ax = True if ax else False
-    if not user_given_ax:
-        fig, ax = plt.subplots(figsize=(10,5), dpi=150)
-    # Plot prior
-    ax.plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-    # Plot true posterior
-    ax.plot(theta_range, posterior_pdf(theta_range, x_observed, sigma), label="posterior with $2\sigma$ region", color="red", linestyle="--")
-
-    # Plot 2 sigma confidence interval of posterior
-    post_mean = (sigma**2 / (1 + sigma**2)) * x_observed.item()
-    post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-    ax.plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-    # Plot posterior approximation
-    ax.plot(theta_range, approximate_posterior(theta_range, x_observed), color="green", label="approximate posterior")
-    ax.set_xlabel(r"$\theta$")
-    if title:
-        ax.set_title(title)
-    if not user_given_ax:
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-    return ax
-
-
-def plot_approximate_posterior_hist_old(approximate_posterior_samples, prior_pdf, posterior_pdf, theta_range, x_observed, sigma, title=None):
-    """For sample-based posterior implementations
-    
-    Either approximate_posterior_samples is a list of Numbers or a list of lists/arrays
-
-    Correspondingly, either x_observed is a Number of a list of Numbers
-    """
-    if isinstance(approximate_posterior_samples, list) and len(approximate_posterior_samples) > 0 and isinstance(approximate_posterior_samples[0], Number):
-        if not ax:
-            fig, ax = plt.subplots(figsize=(10,5), dpi=150)
-
-        # Plot prior
-        ax.plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-        # Plot true posterior
-        ax.plot(theta_range, posterior_pdf(theta_range, x_observed, sigma), label="posterior with $2\sigma$ region", color="red", linestyle="--")
-
-        # Plot 2 sigma confidence interval of posterior
-        post_mean = (sigma**2 / (1 + sigma**2)) * x_observed
-        post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-        ax.plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-        # Plot posterior approximation
-        ax.hist(approximate_posterior_samples, color="green", density=True, bins=50, label="approximate posterior histogram", alpha=0.6)
-        ax.set_xlabel(r"$\theta$")
-        if title:
-            ax.set_title(title)
-        else:
-            ax.set_title(fr"Posterior approximation")
-    else:
-        if len(x_observed)%2 != 0:
-            raise ValueError("Must have even number of x_observed for plotting.")
-        if ax:
-            raise NotImplementedError("Cannot pass an ax if you are plotting the posterior for multiple x.")
-        fig, ax = plt.subplots(nrows=int(len(x_observed)/2), ncols=2, figsize=(8, 8), dpi=150)
-        for k, x_obs in enumerate(x_observed):
-            i, j = k//2, k%2 # Coordinates for plotting
-
-            # Plot prior
-            ax[i,j].plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-            # Plot posterior
-            ax[i,j].plot(theta_range, posterior_pdf(theta_range, x_obs, sigma), label=f"posterior with $2\sigma$ region", color="red", linestyle="--")
-
-            # Plot 2 sigma confidence interval of posterior
-            post_mean = (sigma**2 / (1 + sigma**2)) * x_obs
-            post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-            ax[i,j].plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-            # Plot posterior approximation
-            ax[i,j].hist(approximate_posterior_samples[k], density=True, color="green", bins=50, label="approximate posterior histogram", alpha=0.6)
-            ax[i,j].set_xlabel(r"$\theta$")
-            ax[i,j].set_title(r"$x_{obs} =$" + f" {x_obs}")
-        if title:
-            plt.suptitle(title)
-        else:
-            plt.suptitle(fr"Posterior approximation")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    return ax
-
-
-def plot_approximate_posterior_hist(approximate_posterior_samples, prior_pdf, posterior_pdf, theta_range, x_observed, sigma, title=None, ax=None):
-    """For sample-based posterior implementations
-    
-    Either approximate_posterior_samples is a list of Numbers or a list of lists/arrays
-
-    Correspondingly, either x_observed is a Number of a list of Numbers
-    """
-    user_given_ax = True if ax else False
-    if not user_given_ax:
-        fig, ax = plt.subplots(figsize=(10,5), dpi=150)
-
-    # Plot prior
-    ax.plot(theta_range, prior_pdf(theta_range, sigma), label=f"prior", color="blue")
-
-    # Plot true posterior
-    ax.plot(theta_range, posterior_pdf(theta_range, x_observed, sigma), label="posterior with $2\sigma$ region", color="red", linestyle="--")
-
-    # Plot 2 sigma confidence interval of posterior
-    post_mean = (sigma**2 / (1 + sigma**2)) * x_observed
-    post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-    ax.plot([(post_mean - 2 * post_std), (post_mean + 2 * post_std)], [0,0], color="red", linewidth=4, alpha=0.5)
-
-    # Plot posterior approximation
-    ax.hist(approximate_posterior_samples, color="green", density=True, bins=50, label="approximate posterior histogram", alpha=0.6)
-    ax.set_xlabel(r"$\theta$")
-    if title:
-        ax.set_title(title)
-    if not user_given_ax:
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-    return ax
-
-
 def approximate_posterior_quantiles_against_x(posterior, x_range, num_samples=5000):
     """
+    ONLY WORKS FOR POSTERIORS IMPLEMENTED WITH d=1
     Compute 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles of a sampler-based approximate posterior 
     for each x in x_range. 
     
     Returns a list of 5 lists: one list per quantile level.
     """
+    test_sample = posterior.sample((1, ), x=x_range[0], show_progress_bars=False).view(-1)
+    if len(test_sample) > 1:
+        raise ValueError(f"THIS FUNCTION ONLY WORKS FOR ONE-DIMENSIONAL POSTERIORS (d = 1)! Currently, d = {len(test_sample)}")
 
     quantiles = [[],[],[],[],[]]
     for x in x_range:
@@ -284,8 +79,7 @@ def approximate_posterior_quantiles_against_x(posterior, x_range, num_samples=50
     return quantiles
 
 
-
-def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None, s=1):
+def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, L, U, title=None, linewidth=1, ax=None, samples=None, s=1):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
@@ -320,14 +114,16 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
             data_samples = samples["data_samples"]
             ax.scatter(data_samples, parameter_samples, label="Training data samples", alpha=0.6, s=s, color="black")
 
-    post_mean = (sigma**2 / (1 + sigma**2)) * x_range
-    post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-
     # Compute true posterior quantiles
+    a = (L - x_range) / sigma
+    b = (U - x_range) / sigma
     true_quantiles = [
-        scipy.stats.norm.ppf(levels[i], loc=post_mean, scale=post_std)
+        scipy.stats.truncnorm.ppf(levels[i], a, b, loc=x_range, scale=sigma)
         for i in range(len(levels))
     ]
+
+    true_median = scipy.stats.truncnorm.ppf(0.5, a, b, loc=x_range, scale=sigma)
+    ax.plot(x_range, true_median, color="grey", linestyle="--", label="median of true posterior")
 
     # Shade regions between successive true posterior quantiles
     for i in range(len(levels) - 1):
@@ -355,7 +151,7 @@ def plot_approximate_posterior_quantiles_against_x(x_range, quantiles, sigma, ti
     return ax
 
 
-def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, title=None, linewidth=1, ax=None, samples=None, s=1):
+def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigma, L, U, title=None, linewidth=1, ax=None, samples=None, s=1):
     """
     Plot contour-style plot of x against the 0.5%, 12.5%, 50%, 87.5%, 99.5% quantiles 
     of the approximate posterior given x for each x in x_range.
@@ -391,24 +187,24 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
             data_samples = samples["data_samples"]
             post_mean_on_samples = (sigma**2 / (1 + sigma**2)) * data_samples
             ax.scatter(data_samples, parameter_samples - post_mean_on_samples, label="Training data samples", alpha=0.6, s=s, color="black")
-
-    post_mean = (sigma**2 / (1 + sigma**2)) * x_range
-    post_std = np.sqrt((sigma**2 / (1 + sigma**2)))
-
+    
     # Compute true posterior quantiles
+    a = (L - x_range) / sigma
+    b = (U - x_range) / sigma
     true_quantiles = [
-        scipy.stats.norm.ppf(levels[i], loc=post_mean, scale=post_std)
+        scipy.stats.truncnorm.ppf(levels[i], a, b, loc=x_range, scale=sigma)
         for i in range(len(levels))
     ]
 
-    true_mean = scipy.stats.norm.ppf(0.5, loc=post_mean, scale=post_std)
+    true_median = scipy.stats.truncnorm.ppf(0.5, a, b, loc=x_range, scale=sigma)
+    ax.plot(x_range, np.zeros(len(x_range)), color="grey", linestyle="--", label="median of posterior")
 
     # Shade regions between successive true posterior quantiles
     for i in range(len(levels) - 1):
         ax.fill_between(
             x_range,
-            true_quantiles[i] - true_mean,
-            true_quantiles[i+1] - true_mean,
+            true_quantiles[i] - true_median,
+            true_quantiles[i+1] - true_median,
             color=color_shaded_region[i],
             alpha=0.3,
             label=labels_shaded_region[i]
@@ -416,7 +212,7 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
 
     # Plot your approximate posterior quantile curves
     for i in range(len(quantiles)):
-        ax.plot(x_range, quantiles[i] - true_mean, color=colors[i], linewidth=linewidth, label = labels[i])
+        ax.plot(x_range, quantiles[i] - true_median, color=colors[i], linewidth=linewidth, label = labels[i])
 
     ax.set_title(title)
     ax.set_xlabel(r"$x$")

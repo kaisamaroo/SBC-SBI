@@ -15,7 +15,7 @@ results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "np
 
 ######################## NEEDS FINISHING!!!!!!!!!!!!!!!
 
-def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, experiment_ID, n, d, L, U):
+def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, experiment_ID, d, L, U):
     # By default, experiment_ID is -1, meaning we start a new experiment ID.
     continue_experiment = experiment_ID >= 0
     if not continue_experiment:
@@ -61,7 +61,6 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 "num_simulations_per_round": num_simulations_per_round,
                 "sbc_times": [sbc_time],
                 "total_sbc_time": sbc_time,
-                "n": n,
                 "d": d,
                 "L": L,
                 "U": U}
@@ -104,7 +103,6 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                     and config["sigma"] == sigma
                     and config["num_sequential_rounds"] == num_sequential_rounds
                     and config["num_simulations_per_round"] == num_simulations_per_round
-                    and config["n"] == n
                     and config["d"] == d
                     and config["L"] == L
                     and config["U"] == U
@@ -138,10 +136,9 @@ if __name__ == "__main__":
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
     parser.add_argument("--experiment_ID", type=int, default=-1) # By default, start new experiment
-    parser.add_argument("--n", type=int, default=1)
     parser.add_argument("--d", type=int, default=1)
     parser.add_argument("--L", type=float, default=-1.)
     parser.add_argument("--U", type=float, default=1.)
     args = parser.parse_args()
     main(args.sigma, args.N_iter, args.N_samp, args.num_sequential_rounds, args.num_simulations_per_round,
-         args.experiment_ID, args.n, args.d, args.L, args.U)
+         args.experiment_ID, args.d, args.L, args.U)
