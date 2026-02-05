@@ -131,7 +131,7 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--N_iter", type=int, default=1000)
-    parser.add_argument("--N_samp", type=int, default=1000)
+    parser.add_argument("--N_samp", type=int, default=10000)
     parser.add_argument("--sigma", type=float, default=1.)
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
