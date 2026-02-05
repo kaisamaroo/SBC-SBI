@@ -42,11 +42,10 @@ def main(sigma, num_simulations, d, L, U, num_simulations_list, d_list, force_fi
         "force_first_round_loss": force_first_round_loss,
         "num_posteriors_per_leakage_factor": num_posteriors_per_leakage_factor,
         "num_posterior_samples_per_leakage_factor": num_posterior_samples_per_leakage_factor,
-        "x_observed": x_observed
+        "x_observed": x_observed,
     }
 
     leakage_factor_dict = {}
-    runtimes_dict = {}
 
     if isinstance(num_simulations_list, list) and isinstance(d_list, list):
         raise ValueError("EXACTLY ONE OF num_simulations_list AND d_list HAS TO BE INPUT! Currently, both were input.")
@@ -65,22 +64,16 @@ def main(sigma, num_simulations, d, L, U, num_simulations_list, d_list, force_fi
         for num_simulations in num_simulations_list:
             print(f"\n num_simulations = {num_simulations}:")
             leakage_factors = []
-            runtimes = []
             for _ in range(num_posteriors_per_leakage_factor):
                 print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
-                t0 = time.perf_counter()
                 density_estimator = train_amortized_posterior_density_estimator(sigma, num_simulations, d, L, U, force_first_round_loss)
-                t1 = time.perf_counter()
-                runtime = t1 - t0
                 samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
                                                     condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
                 samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
                 leaked_mask = (samples < L) | (samples > U)
                 leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
-                runtimes.append(runtime)
                 leakage_factors.append(leakage_factor)
             leakage_factor_dict[f"num_simulations = {num_simulations}"] = leakage_factors
-            runtimes_dict[f"num_simulations = {num_simulations}"] = runtimes
                 
     elif isinstance(d_list, list):
         # Cannot specify x_observed if d is being varied
@@ -95,27 +88,19 @@ def main(sigma, num_simulations, d, L, U, num_simulations_list, d_list, force_fi
             x_observed = x_observed.unsqueeze(0) # shape torch.size([1, d]) needed for sampling from density_estimator
             print(f"x_observed = {x_observed}")
             leakage_factors = []
-            runtimes = []
             for _ in range(num_posteriors_per_leakage_factor):
                 print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
-                t0 = time.perf_counter()
                 density_estimator = train_amortized_posterior_density_estimator(sigma, num_simulations, d, L, U, force_first_round_loss)
-                t1 = time.perf_counter()
-                runtime = t1 - t0
                 samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
                                                     condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
                 samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
                 leaked_mask = (samples < L) | (samples > U)
                 leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
-                runtimes.append(runtime)
                 leakage_factors.append(leakage_factor)
             leakage_factor_dict[f"d = {d}"] = leakage_factors
-            runtimes_dict[f"d = {d}"] = runtimes
 
     else:
         raise ValueError("EXACTLY ONE OF num_simulations_list AND d_list HAS TO BE INPUT! Currently, none were input.")
-
-    config["runtimes_dict"] = runtimes_dict
 
     # Find next ID
     i = 0

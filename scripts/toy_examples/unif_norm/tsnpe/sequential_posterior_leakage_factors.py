@@ -17,28 +17,25 @@ def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequenti
     prior = make_prior(L=L, U=U, d=d)
     inference = NPE_C(prior=prior)
     proposal = prior
-    try:
-        for r in range(num_sequential_rounds):
-            print(f"\n Round {r+1}:")
-            print("\n Generating samples:")
-            parameter_samples = proposal.sample((num_simulations_per_round,))
-            data_samples = simulator(parameter_samples, sigma=sigma, d=d)
-            print("\n Samples generated")
 
-            print("\n Training proposal:")
-            if r == num_sequential_rounds - 1:
-                density_estimator = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
-                sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
-            else:
-                _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
-                sequential_posterior = inference.build_posterior().set_default_x(x_observed)
-                proposal = sequential_posterior
-            print("\n Proposal trained successfully:")
-        print("\n Posterior trained successfully.")
-        return density_estimator
-    except AssertionError:
-        # Return None if SNPE-C fails
-        return None
+    for r in range(num_sequential_rounds):
+        print(f"\n Round {r+1}:")
+        print("\n Generating samples:")
+        parameter_samples = proposal.sample((num_simulations_per_round,))
+        data_samples = simulator(parameter_samples, sigma=sigma, d=d)
+        print("\n Samples generated")
+
+        print("\n Training proposal:")
+        if r == num_sequential_rounds - 1:
+            density_estimator = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
+            sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
+        else:
+            _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
+            sequential_posterior = inference.build_posterior().set_default_x(x_observed)
+            proposal = sequential_posterior
+        print("\n Proposal trained successfully:")
+    print("\n Posterior trained successfully.")
+    return density_estimator
 
 
 def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_list, 
@@ -58,11 +55,10 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
         "num_simulations_per_round": num_simulations_per_round,
         "num_posteriors_per_leakage_factor": num_posteriors_per_leakage_factor,
         "num_posterior_samples_per_leakage_factor": num_posterior_samples_per_leakage_factor,
-        "x_observed": x_observed
+        "x_observed": x_observed,
     }
 
     leakage_factor_dict = {}
-    runtimes_dict = {}
 
     both_nr_nspr_are_lists = isinstance(num_sequential_rounds_list, list) and isinstance(num_simulations_per_round_list, list)
     d_is_list = isinstance(d_list, list)
@@ -83,29 +79,16 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
         for num_sequential_rounds, num_simulations_per_round in zip(num_sequential_rounds_list, num_simulations_per_round_list):
             print(f"(num_sequential_rounds, num_simulations_per_round) = {(num_sequential_rounds, num_simulations_per_round)}:")
             leakage_factors = []
-            runtimes = []
             for _ in range(num_posteriors_per_leakage_factor):
-                t0 = time.perf_counter()
-                print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
                 density_estimator = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
-                t1 = time.perf_counter()
-                runtime = t1 - t0
-                runtimes.append(runtime)
-                if density_estimator:
-                    # This runs if SNPE-C doesnt fail
-                    samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
-                                                        condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
-                    samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
-                    leaked_mask = (samples < L) | (samples > U)
-                    leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
-                    leakage_factors.append(leakage_factor)
-                else:
-                    # This runs if SNPE-C fails.
-                    print("\n SNPE-C FAILED! SKIPPING LEAKAGE FACTOR")
-                    leakage_factors.append(np.nan) # Use a nan leakage factor if SNPE-C fails
+                samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
+                                                    condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
+                samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
+                leaked_mask = (samples < L) | (samples > U)
+                leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
+                leakage_factors.append(leakage_factor)
             leakage_factor_dict[f"(num_sequential_rounds, num_simulations_per_round) = {(num_sequential_rounds, num_simulations_per_round)}"] = leakage_factors
-            runtimes_dict[f"(num_sequential_rounds, num_simulations_per_round) = {(num_sequential_rounds, num_simulations_per_round)}"] = runtimes
-
+        
     elif d_is_list:
         # Cannot specify x_observed if d is being varied
         if x_observed:
@@ -119,34 +102,20 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
             x_observed = x_observed.unsqueeze(0) # shape torch.size([1, d]) needed for sampling from density_estimator
             print(f"x_observed = {x_observed}")
             leakage_factors = []
-            runtimes = []
             for _ in range(num_posteriors_per_leakage_factor):
                 print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
-                t0 = time.perf_counter()
                 density_estimator = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
-                t1 = time.perf_counter()
-                runtime = t1 - t0
-                runtimes.append(runtime)
-                if density_estimator:
-                    # This runs if SNPE-C doesnt fail
-                    samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
-                                                        condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
-                    samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
-                    leaked_mask = (samples < L) | (samples > U)
-                    leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
-                    leakage_factors.append(leakage_factor)
-                else:
-                    # This runs if SNPE-C fails.
-                    print("\n SNPE-C FAILED! SKIPPING LEAKAGE FACTOR")
-                    leakage_factors.append(np.nan) # Use a nan leakage factor if SNPE-C fails
+                samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
+                                                    condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
+                samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
+                leaked_mask = (samples < L) | (samples > U)
+                leakage_factor = leaked_mask.any(dim=1).sum().item() / num_posterior_samples_per_leakage_factor
+                leakage_factors.append(leakage_factor)
             leakage_factor_dict[f"d = {d}"] = leakage_factors
-            runtimes_dict[f"d = {d}"] = runtimes
 
     else:
         raise ValueError("INVALID INPUT TYPES: EITHER BOTH num_sequential_rounds_list AND num_simulations_per_round_list MUST BE LISTS, XOR d_list MUST BE A LIST! Currently, neither are true!")
     
-    config["runtimes_dict"] = runtimes_dict
-
     # Find next ID
     i = 0
     while os.path.exists(results_path + f"/sequential_leakage_factor_dict{i}.npz"):
