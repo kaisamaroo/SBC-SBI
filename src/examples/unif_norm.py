@@ -225,6 +225,67 @@ def plot_approximate_posterior_quantiles_diff_against_x(x_range, quantiles, sigm
     return ax
 
 
+# Projection test function
+def test_function_projection(theta, i):
+    """
+    theta is a 1D or 2D torch.tensor 
+
+    project theta onto its i'th dimension
+    """
+    if theta.dim() == 1:
+        return theta[i]
+    else:
+        # In this case, theta is (batch_size, parameter_dimension)
+        return theta[:, i]
+
+
+def test_function_squared_norm(theta):
+    """
+    theta is a 1D or 2D torch.tensor 
+
+    return squared norm of parameter vector
+    """
+    if theta.dim() == 1:
+        return torch.sum(theta**2)
+    else:
+        # In this case, theta is (batch_size, parameter_dimension)
+        return torch.sum(theta**2, axis=1)
+
+
+# UPDATE THIS ALONG WITH all_test_function_names
+def get_test_function(test_function_name="projection0", d=1):
+    if not test_function_name:
+        # If None is input, return None
+        return None
+    for i in range(d):
+        if test_function_name == f"projection{i}":
+            return lambda x : test_function_projection(x, i)
+    if test_function_name=="squared_norm":
+        return test_function_squared_norm
+    else:
+        raise NotImplementedError("No matching test function.")
+    
+# UPDATE THIS ALONG WITH get_test_function
+def get_all_test_function_names_list(d=1):
+    all_test_function_names = [f"projection{i}" for i in range(d)] \
+                        + ["squared_norm"]
+    return all_test_function_names
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def snpe_a_posterior_variance(x, sequential_posterior):
     """
     Return variance of posterior approximation for various possible observed x

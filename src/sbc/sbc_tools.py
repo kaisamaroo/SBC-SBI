@@ -126,12 +126,14 @@ def plot_sbc_all(ranks, N_samp, alpha=0.05, title=None):
     plt.tight_layout()
     plt.show()
     return ax
+    
 
-
-def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False):
+def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False, return_samples=False, always_return_dict=False):
     """
     return normalized SBC ranks
     """
+    if return_samples:
+        samples_dict = {}
 
     if isinstance(test_function, list):
         # Multiple test functions given
@@ -145,6 +147,10 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = model(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_samples = posterior.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            if return_samples:
+                samples_dict[f"prior_sample_round_{i}"] = prior_sample
+                samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+                samples_dict[f"posterior_samples_round_{i}"] = np.array(posterior_samples)
             # Calculate rank for each test function
             for test_function_, test_function_name_ in test_function:
                 ranks[test_function_name_].append(
@@ -154,7 +160,10 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
         # Convert rank lists to np arrays
         ranks = {k: np.array(v) for k, v in ranks.items()}
-        return ranks
+        if return_samples:
+            return ranks, samples_dict
+        else:
+            return ranks
 
     else:
         # Single (or no) test function given
@@ -165,6 +174,10 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = model(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_samples = posterior.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            if return_samples:
+                samples_dict[f"prior_sample_round_{i}"] = prior_sample
+                samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+                samples_dict[f"posterior_samples_round_{i}"] = np.array(posterior_samples)
             if test_function:
                 rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
             else:
@@ -173,11 +186,23 @@ def sbc_ranks(model, prior, posterior, test_function=None, N_iter=100, N_samp=10
             ranks.append(float(rank))
         if show_progress:
             print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
-        return np.array(ranks)
+        if return_samples:
+            if always_return_dict:
+                return {"": np.array(ranks)}, samples_dict
+            else:
+                return np.array(ranks), samples_dict
+        else:
+            if always_return_dict:
+                return {"": np.array(ranks)}
+            else:
+                return np.array(ranks)
 
 
+# OLD FUNCTION, ONLY USED FOR OLD SCRIPTS. COULD CHANGE ALL OLD SCRIPTS AND DELETE THIS.
 def sbc_ranks_and_samples(model, prior, posterior, test_function=None, N_iter=100, N_samp=100, show_progress=False):
     """
+    OLD VERSION. MODERN APPLICATIONS SHOULD USE sbc_ranks WITH return_samples SET TO True
+
     return normalized SBC ranks AND a sictionary containing each round's samples
     """
     # YET TO IMPLEMENT MULTIPLE TEST FUNCTIONS
@@ -355,7 +380,7 @@ def sbc_ranks_snpe_a_and_samples(simulator,
     return ranks, samples_dict
 
 
-def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, use_combined_loss=False, show_progress=True):
+def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, use_combined_loss=False, show_progress=True, sample_with='direct'):
     """
     Return x_obs-sequentially-trained SNPE-C posterior 
     """
@@ -375,10 +400,10 @@ def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_s
         if r == num_sequential_rounds - 1:
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
             # Final posterior shouldnt be conditioned on x_obs (so we can see how it infers other x)
-            sequential_posterior = inference.build_posterior()
+            sequential_posterior = inference.build_posterior(sample_with=sample_with)
         else:
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
-            sequential_posterior = inference.build_posterior().set_default_x(x_obs)
+            sequential_posterior = inference.build_posterior(sample_with=sample_with).set_default_x(x_obs)
             proposal = sequential_posterior
     return sequential_posterior
 
@@ -392,10 +417,16 @@ def sbc_ranks_snpe_c(simulator,
                     num_sequential_rounds=4,
                     num_simulations_per_round=5000,
                     use_combined_loss=False,
-                    show_progress=True):
+                    show_progress=True,
+                    return_samples=False,
+                    always_return_dict=False,
+                    sample_with="direct"):
     """
     return normalized SBC ranks for SNPE-C
     """
+    if return_samples:
+        samples_dict = {}
+
     if isinstance(test_function, list):
         # Multiple test functions given
         # test_function should be of the form [(test_function, test_function_name), ...]
@@ -407,8 +438,12 @@ def sbc_ranks_snpe_c(simulator,
                 print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            if return_samples:
+                samples_dict[f"prior_sample_round_{i}"] = prior_sample
+                samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+                samples_dict[f"posterior_samples_round_{i}"] = posterior_samples
             # Calculate rank for each test function
             for test_function_, test_function_name_ in test_function:
                 ranks[test_function_name_].append(
@@ -418,7 +453,10 @@ def sbc_ranks_snpe_c(simulator,
             print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
         # Convert rank lists to np arrays
         ranks = {k: np.array(v) for k, v in ranks.items()}
-        return ranks
+        if return_samples:
+            return ranks, samples_dict
+        else:
+            return ranks
 
     else:
         # Single (or no) test function given
@@ -428,8 +466,12 @@ def sbc_ranks_snpe_c(simulator,
                 print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss)
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
+            if return_samples:
+                samples_dict[f"prior_sample_round_{i}"] = prior_sample
+                samples_dict[f"data_sample_round_{i}"] = simulated_datapoint
+                samples_dict[f"posterior_samples_round_{i}"] = posterior_samples
             if test_function:
                 rank = torch.sum(test_function(prior_sample) * torch.ones(N_samp) > test_function(posterior_samples))/N_samp
             else:
@@ -438,9 +480,19 @@ def sbc_ranks_snpe_c(simulator,
             ranks.append(float(rank))
         if show_progress:
             print("\n" + 12*"-" + f"FINISHED SBC" + 12*"-")
-        return np.array(ranks)
+        if return_samples:
+            if always_return_dict:
+                return {"": np.array(ranks)}, samples_dict
+            else:
+                return np.array(ranks), samples_dict
+        else:
+            if always_return_dict:
+                return {"": np.array(ranks)}
+            else:
+                return np.array(ranks)
 
 
+# OLD FUNCTION, ONLY USED FOR OLD SCRIPTS. COULD CHANGE ALL OLD SCRIPTS AND DELETE THIS.
 def sbc_ranks_snpe_c_and_samples(simulator,
                     prior,
                     train_sequential_posterior,
@@ -451,6 +503,8 @@ def sbc_ranks_snpe_c_and_samples(simulator,
                     num_simulations_per_round=5000,
                     show_progress=True):
     """
+    OLD VERSION. MODERN APPLICATIONS SHOULD USE sbc_ranks WITH return_samples SET TO True
+
     return normalized SBC ranks for SNPE-C
     """
     if isinstance(test_function, list):
