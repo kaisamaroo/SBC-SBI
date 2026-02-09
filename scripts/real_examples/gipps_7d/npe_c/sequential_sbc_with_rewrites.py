@@ -32,25 +32,15 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
     
     # By default, experiment_ID is -1, meaning we start a new experiment ID.
     continue_experiment = experiment_ID >= 0
-    if not continue_experiment:
-        # Find next available ID
-        i = 0
-        while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"):
-            i += 1
-    else:
+    if continue_experiment:
         # Continue with existing experiment
         i = experiment_ID
         if not os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"):
             raise AssertionError("No file in directory " + results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml")
         print(f"\n Continuing to append to experiment {experiment_ID}.")
-
-    config_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
-    if test_function_name=="all":
-        # If using all test functions, need to save a dict of np arrays as ranks
+        config_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
+        # Always save ranks in a dict
         ranks_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npz"
-    else:
-        # If using a single test function, we simply save a single numpy array
-        ranks_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npy"
     
     prior_config = {
             "aL": aL,
@@ -106,16 +96,20 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
         # Try to generate rank
         try:
             start_time = time.perf_counter()
+            # rank is always a dictionary, even if only 1 test function is passed
             rank = sbc_ranks_snpe_c(simulator_,
-                            prior,
-                            train_snpe_c_posterior,
-                            test_function=test_function,
-                            N_iter=1,
-                            N_samp=N_samp,
-                            num_sequential_rounds=num_sequential_rounds,
-                            num_simulations_per_round=num_simulations_per_round,
-                            use_combined_loss=use_combined_loss, # Using combined loss can help reduce leakage in models with compact prior supports
-                            show_progress=False)
+                        prior,
+                        train_snpe_c_posterior,
+                        test_function=test_function,
+                        N_iter=1,
+                        N_samp=N_samp,
+                        num_sequential_rounds=num_sequential_rounds,
+                        num_simulations_per_round=num_simulations_per_round,
+                        use_combined_loss=use_combined_loss,
+                        show_progress=False,
+                        return_samples=False, # Don'r return samples since this isnt a 1D problem
+                        always_return_dict=True,
+                        sample_with="direct")
             end_time = time.perf_counter()
             sbc_time = end_time - start_time
             print("\n Rank generated")
@@ -128,7 +122,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                 # make rank dict of np.nans
                 rank = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
             else:
-                rank = [np.nan]
+                rank = {"": [np.nan]}
             print("\n Rank generation failed.")
 
         if (n == 0) and (not continue_experiment):
@@ -154,63 +148,49 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                 "prior_config": prior_config
             }
 
-            if isinstance(rank, dict):
-                print(f"Saving first rank to {ranks_path}:")
-                np.savez(ranks_path, **rank)
-                print("Rank saved successfully.")
-            else:
-                print(f"Saving first rank to {ranks_path}:")
-                np.save(ranks_path, np.array(rank).reshape(-1))
-                print("Rank saved successfully.")
+            # Find next available ID
+            i = 0
+            while os.path.exists(results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"):
+                i += 1
+
+            config_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
+            ranks_path = results_path + f"/sequential_sbc{i}_leader_trajectory{leader_trajectory_ID}" + ".npz"
 
             print(f"Saving first config file to path {config_path}:")
             with open(config_path, "w") as f:
                 yaml.safe_dump(config, f)
             print("Config file saved successfully.")
-        else:
-            # Load ranks
-            ranks = np.load(ranks_path)
-            if isinstance(rank, dict):
-                ranks = dict(ranks)
-                # Update ranks by appending new rank
-                for test_function_name_ in ranks:
-                    ranks[test_function_name_] = list(ranks[test_function_name_])
-                    ranks[test_function_name_].append(rank[test_function_name_][0])
-                # Save updated ranks
-                np.savez(ranks_path, **ranks)
-            else:
-                # Update ranks by appending new rank
-                ranks = list(ranks)
-                ranks.append(rank[0])
-                # Save updated ranks
-                np.save(ranks_path, np.array(ranks))
 
+            print(f"Saving first rank to {ranks_path}:")
+            np.savez(ranks_path, **rank)
+            print("Rank saved successfully.")
+
+        else:
             # Load config
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
             config = dict(config)
             # Assert that hyperparameters are equal
-            if n==0:
-                # If we are appending to an existing experiment, we must assert that
-                # all hyperparameters are equal. If not, it's not sensible to append simulations.
+            # If we are appending to an existing experiment, we must assert that
+            # all hyperparameters are equal. If not, it's not sensible to append simulations.
 
-                assert(
-                    config["sbc_config"]["N_samp"] == N_samp
-                    and config["sbc_config"]["num_sequential_rounds"] == num_sequential_rounds
-                    and config["sbc_config"]["num_simulations_per_round"] == num_simulations_per_round
-                    and config["sbc_config"]["leader_trajectory_ID"] == leader_trajectory_ID
-                    and config["sbc_config"]["tau"] == tau
-                    and config["sbc_config"]["N"] == N
-                    and config["sbc_config"]["ll"] == ll
-                    and config["sbc_config"]["psi"] == psi
-                    and config["sbc_config"]["bl"] == bl
-                    and config["leader_trajectory_config"] == leader_trajectory_config
-                    and config["prior_config"] == prior_config
-                )
-                if test_function_name=="all":
-                    assert config["sbc_config"]["test_function_name"] == all_test_function_names
-                else:
-                    assert config["sbc_config"]["test_function_name"] == test_function_name
+            assert(
+                config["sbc_config"]["N_samp"] == N_samp
+                and config["sbc_config"]["num_sequential_rounds"] == num_sequential_rounds
+                and config["sbc_config"]["num_simulations_per_round"] == num_simulations_per_round
+                and config["sbc_config"]["leader_trajectory_ID"] == leader_trajectory_ID
+                and config["sbc_config"]["tau"] == tau
+                and config["sbc_config"]["N"] == N
+                and config["sbc_config"]["ll"] == ll
+                and config["sbc_config"]["psi"] == psi
+                and config["sbc_config"]["bl"] == bl
+                and config["leader_trajectory_config"] == leader_trajectory_config
+                and config["prior_config"] == prior_config
+            )
+            if test_function_name=="all":
+                assert config["sbc_config"]["test_function_name"] == all_test_function_names
+            else:
+                assert config["sbc_config"]["test_function_name"] == test_function_name
 
             # Update config
             config["sbc_config"]["N_iter"] += 1
@@ -220,6 +200,16 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
             # Save updated config
             with open(config_path, "w") as f:
                 yaml.safe_dump(config, f)
+
+            # Load ranks
+            ranks = np.load(ranks_path)
+            ranks = dict(ranks)
+            # Update ranks by appending new rank
+            for test_function_name_ in ranks:
+                ranks[test_function_name_] = list(ranks[test_function_name_])
+                ranks[test_function_name_].append(rank[test_function_name_][0])
+            # Save updated ranks
+            np.savez(ranks_path, **ranks)
 
     print("\n SBC finished.")
 

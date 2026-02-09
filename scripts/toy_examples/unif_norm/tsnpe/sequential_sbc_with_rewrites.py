@@ -16,30 +16,32 @@ results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "ts
 
 def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, 
          experiment_ID, d, L, U, test_function_name, sample_with, epsilon, restricted_prior_sample_with):
+    # pbs files only let use input test_function_name as "None" (string), so convert if this is the case
+    if test_function_name == "None":
+        test_function_name = None
+    
     if d > 1 and not test_function_name:
         raise AssertionError("TEST FUNCTION MUST BE SPECIFIED IF d > 1!")
-    
+
     # By default, experiment_ID is -1, meaning we start a new experiment ID.
     continue_experiment = experiment_ID >= 0
-    if not continue_experiment:
-        # Find next available ID
-        i = 0
-        while os.path.exists(results_path + f"/sequential_sbc_ranks{i}.yaml"):
-            i += 1
-    else:
+
+    if continue_experiment:
         # Continue with existing experiment
         i = experiment_ID
         if not os.path.exists(results_path + f"/sequential_sbc_ranks{i}.yaml"):
             raise AssertionError("No file in directory " + results_path + f"/sequential_sbc_ranks{i}.yaml")
         print(f"\n Continuing to append to experiment {experiment_ID}.")
+        # Always save ranks as dict (even if singular / no test function)
+        sequential_sbc_path = results_path + f"/sequential_sbc_ranks{i}.npz"
+        config_path = results_path + f"/sequential_sbc_ranks{i}.yaml"
+        simulations_path = results_path + f"/sequential_sbc_ranks{i}_simulations.npz"
+
 
     # Get simulator in required form
     simulator_ = lambda x: simulator(x, sigma=sigma, d=d)
 
-    # Always save ranks as dict (even if singular / no test function)
-    sequential_sbc_path = results_path + f"/sequential_sbc_ranks{i}.npz"
-    config_path = results_path + f"/sequential_sbc_ranks{i}.yaml"
-    simulations_path = results_path + f"/sequential_sbc_ranks{i}_simulations.npz"
+
 
     # Retrieve test function
     if test_function_name == "all":
@@ -121,15 +123,25 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 "epsilon": epsilon, 
                 "restricted_prior_sample_with": restricted_prior_sample_with
             }
-            
-            print(f"\n Saving first rank to {sequential_sbc_path}:")
-            np.savez(sequential_sbc_path, **rank_sequential)
-            print("\n Rank saved.")
+
+            # Find next available ID
+            i = 0
+            while os.path.exists(results_path + f"/sequential_sbc_ranks{i}.yaml"):
+                i += 1
+
+            # Always save ranks as dict (even if singular / no test function)
+            sequential_sbc_path = results_path + f"/sequential_sbc_ranks{i}.npz"
+            config_path = results_path + f"/sequential_sbc_ranks{i}.yaml"
+            simulations_path = results_path + f"/sequential_sbc_ranks{i}_simulations.npz"
 
             print(f"\n Saving first config file to {config_path}:")
             with open(config_path, "w") as f:
                 yaml.safe_dump(config, f)
             print("\n Config file saved successfully.")
+            
+            print(f"\n Saving first rank to {sequential_sbc_path}:")
+            np.savez(sequential_sbc_path, **rank_sequential)
+            print("\n Rank saved.")
 
             if d == 1:
                 # Save simulations:
@@ -140,40 +152,29 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
         else:
             # Append to existing files
 
-            # Load ranks
-            sequential_ranks = np.load(sequential_sbc_path)
-            sequential_ranks = dict(sequential_ranks)
-            # Update ranks by appending new rank
-            for test_function_name_ in sequential_ranks:
-                sequential_ranks[test_function_name_] = list(sequential_ranks[test_function_name_])
-                sequential_ranks[test_function_name_].append(rank_sequential[test_function_name_][0])
-            # Save updated ranks
-            np.savez(sequential_sbc_path, **sequential_ranks)
-
             # Load config
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
             config = dict(config)
             # Assert that hyperparameters are equal
-            if k==0:
-                # If we are appending to an existing experiment, we must assert that
-                # all hyperparameters are equal. If not, it's not sensible to append simulations.
-                assert(
-                    config["N_samp"] == N_samp
-                    and config["sigma"] == sigma
-                    and config["num_sequential_rounds"] == num_sequential_rounds
-                    and config["num_simulations_per_round"] == num_simulations_per_round
-                    and config["d"] == d
-                    and config["L"] == L
-                    and config["U"] == U
-                    and config["sample_with"] == sample_with
-                    and config["epsilon"] == epsilon
-                    and config["restricted_prior_sample_with"] == restricted_prior_sample_with
-                )
-                if test_function_name=="all":
-                    assert config["test_function_name"] == all_test_function_names
-                else:
-                    assert config["test_function_name"] == test_function_name
+            # If we are appending to an existing experiment, we must assert that
+            # all hyperparameters are equal. If not, it's not sensible to append simulations.
+            assert(
+                config["N_samp"] == N_samp
+                and config["sigma"] == sigma
+                and config["num_sequential_rounds"] == num_sequential_rounds
+                and config["num_simulations_per_round"] == num_simulations_per_round
+                and config["d"] == d
+                and config["L"] == L
+                and config["U"] == U
+                and config["sample_with"] == sample_with
+                and config["epsilon"] == epsilon
+                and config["restricted_prior_sample_with"] == restricted_prior_sample_with
+            )
+            if test_function_name=="all":
+                assert config["test_function_name"] == all_test_function_names
+            else:
+                assert config["test_function_name"] == test_function_name
             old_N_iter = config["N_iter"] # For simulation indexing
             # Update config
             config["N_iter"] += 1
@@ -183,6 +184,16 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             # Save updated config
             with open(config_path, "w") as f:
                 yaml.safe_dump(config, f)
+
+            # Load ranks
+            sequential_ranks = np.load(sequential_sbc_path)
+            sequential_ranks = dict(sequential_ranks)
+            # Update ranks by appending new rank
+            for test_function_name_ in sequential_ranks:
+                sequential_ranks[test_function_name_] = list(sequential_ranks[test_function_name_])
+                sequential_ranks[test_function_name_].append(rank_sequential[test_function_name_][0])
+            # Save updated ranks
+            np.savez(sequential_sbc_path, **sequential_ranks)
 
             if d == 1:
                 # Load simulations
