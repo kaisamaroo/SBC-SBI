@@ -1,0 +1,13 @@
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 1: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 2: from: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 3: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 4: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 5: from: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 6: from: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 7: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 8: from: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 9: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 10: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 11: import: command not found
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 13: syntax error near unexpected token `('
+/var/spool/pbs/mom_priv/jobs/1676877.pbs-7.SC: line 13: `path_to_repo = Path(__file__).resolve().parents[4]'

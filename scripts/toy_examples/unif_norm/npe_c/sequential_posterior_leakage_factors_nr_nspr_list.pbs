@@ -14,7 +14,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 source ~/venvs/sbi_venv/bin/activate
 
 python sequential_posterior_leakage_factors.py \
-    --num_sequential_rounds_list 2 2 2 2 3 3 3 3 4 4 4 4 \
-    --num_simulations_per_round_list 100 1000 10000 100000 100 1000 10000 100000 100 1000 10000 100000 \
+    --num_sequential_rounds_list 2 2 2 3 3 3 4 4 4 \
+    --num_simulations_per_round_list 100 1000 10000 100 1000 10000 100 1000 10000 \
     --x_observed 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 \
     --d 10
