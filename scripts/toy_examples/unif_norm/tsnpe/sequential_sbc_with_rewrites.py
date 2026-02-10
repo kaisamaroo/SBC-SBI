@@ -15,7 +15,8 @@ results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "ts
 
 
 def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, 
-         experiment_ID, d, L, U, test_function_name, sample_with, epsilon, restricted_prior_sample_with):
+         experiment_ID, d, L, U, test_function_name, sample_with, epsilon, restricted_prior_sample_with,
+         num_samples_to_estimate_support):
     # pbs files only let use input test_function_name as "None" (string), so convert if this is the case
     if test_function_name == "None":
         test_function_name = None
@@ -37,11 +38,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
         config_path = results_path + f"/sequential_sbc_ranks{i}.yaml"
         simulations_path = results_path + f"/sequential_sbc_ranks{i}_simulations.npz"
 
-
     # Get simulator in required form
     simulator_ = lambda x: simulator(x, sigma=sigma, d=d)
-
-
 
     # Retrieve test function
     if test_function_name == "all":
@@ -77,7 +75,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                                         always_return_dict=True,
                                         sample_with=sample_with,
                                         restricted_prior_sample_with=restricted_prior_sample_with,
-                                        epsilon=epsilon)
+                                        epsilon=epsilon,
+                                        num_samples_to_estimate_support=num_samples_to_estimate_support)
             else:
                 rank_sequential = sbc_ranks_tsnpe(simulator_,
                                         prior,
@@ -92,7 +91,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                                         always_return_dict=True,
                                         sample_with=sample_with,
                                         restricted_prior_sample_with=restricted_prior_sample_with,
-                                        epsilon=epsilon)
+                                        epsilon=epsilon,
+                                        num_samples_to_estimate_support=num_samples_to_estimate_support)
             end_time = time.perf_counter()
             print("\n Rank generated")
             sbc_time = end_time - start_time
@@ -121,7 +121,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 "test_function_name": all_test_function_names if test_function_name=="all" else test_function_name,
                 "sample_with": sample_with,
                 "epsilon": epsilon, 
-                "restricted_prior_sample_with": restricted_prior_sample_with
+                "restricted_prior_sample_with": restricted_prior_sample_with,
+                "num_samples_to_estimate_support": num_samples_to_estimate_support
             }
 
             # Find next available ID
@@ -170,6 +171,7 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 and config["sample_with"] == sample_with
                 and config["epsilon"] == epsilon
                 and config["restricted_prior_sample_with"] == restricted_prior_sample_with
+                and config["num_samples_to_estimate_support"] == num_samples_to_estimate_support
             )
             if test_function_name=="all":
                 assert config["test_function_name"] == all_test_function_names
@@ -223,9 +225,9 @@ if __name__ == "__main__":
     parser.add_argument("--sample_with", type=str, default="direct")
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
     parser.add_argument("--epsilon", type=float, default=1e-4)
-
+    parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
 
     args = parser.parse_args()
     main(args.sigma, args.N_iter, args.N_samp, args.num_sequential_rounds, args.num_simulations_per_round,
          args.experiment_ID, args.d, args.L, args.U, args.test_function_name, args.sample_with,
-         args.epsilon, args.restricted_prior_sample_with)
+         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support)

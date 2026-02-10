@@ -14,7 +14,8 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "tsnpe")
 
 
-def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, epsilon, restricted_prior_sample_with):
+def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, epsilon, 
+         restricted_prior_sample_with, num_samples_to_estimate_support):
     prior = make_prior(L=L, U=U, d=d)
     inference = NPE_C(prior=prior)
     proposal = prior
@@ -23,8 +24,9 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
     simulation_times = []
     training_times = []
 
-    # Initialize samples_dict to store all parameter and data samples
-    samples_dict = {}
+    # Initialize samples_dict to store all parameter and data samples if d = 1
+    if d == 1:  
+        samples_dict = {}
 
     for r in range(num_sequential_rounds):
         print(f"\n Round {r+1}:")
@@ -35,9 +37,10 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         sample_end_time = time.perf_counter()
         sample_time = sample_end_time - sample_start_time
         simulation_times.append(sample_time)
-        # Save samples
-        samples_dict[f"parameter_samples_round_{r}"] = parameter_samples
-        samples_dict[f"data_samples_round_{r}"] = data_samples
+        # Save samples only in 1D case
+        if d == 1:
+            samples_dict[f"parameter_samples_round_{r}"] = parameter_samples
+            samples_dict[f"data_samples_round_{r}"] = data_samples
         print("\n Samples generated")
 
         print("\n Training proposal:")
@@ -48,7 +51,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         else:
             _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
             sequential_posterior = inference.build_posterior().set_default_x(x_observed)
-            accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon)
+            accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
             proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
@@ -69,7 +72,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
               "L": L,
               "U": U,
               "epsilon": epsilon,
-              "restricted_prior_sample_with": restricted_prior_sample_with}
+              "restricted_prior_sample_with": restricted_prior_sample_with,
+              "num_samples_to_estimate_support": num_samples_to_estimate_support}
     
     # Find next ID
     i = 0
@@ -80,7 +84,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
     sequential_posterior_save_path = results_path + f"/sequential_posterior{i}.pkl"
     sequential_density_estimator_path = results_path + f"/sequential_posterior{i}_density_estimator.pkl"
     config_save_path = results_path + f"/sequential_posterior{i}.yaml"
-    simulations_save_path = results_path + f"/sequential_posterior{i}_simulations.npz"
+    if d == 1:
+        simulations_save_path = results_path + f"/sequential_posterior{i}_simulations.npz"
 
     print(f"\n Saving trained posterior to {sequential_posterior_save_path}:")
     with open(sequential_posterior_save_path, "wb") as handle:
@@ -97,10 +102,11 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         yaml.safe_dump(config, f)
     print("\n Config file saved successfully.")
 
-    # Save simulations:
-    print(f"\n Saving simulations to {simulations_save_path}:")
-    np.savez(simulations_save_path, **samples_dict)
-    print("\n Simulations saved successfully.")
+    # Save simulations if d = 1:
+    if d == 1:
+        print(f"\n Saving simulations to {simulations_save_path}:")
+        np.savez(simulations_save_path, **samples_dict)
+        print("\n Simulations saved successfully.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -113,8 +119,9 @@ if __name__ == "__main__":
     parser.add_argument("--U", type=float, default=1.)
     parser.add_argument("--epsilon", type=float, default=1e-4)
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
+    parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
 
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
          args.num_simulations_per_round, args.d, args.L, args.U,
-         args.epsilon, args.restricted_prior_sample_with)
+         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support)

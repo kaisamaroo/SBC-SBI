@@ -494,7 +494,8 @@ def sbc_ranks_snpe_c(simulator,
             
 
 def train_tsnpe_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, 
-                          show_progress=True, sample_with='direct', restricted_prior_sample_with="direct", epsilon=1e-4):
+                          show_progress=True, sample_with='direct', restricted_prior_sample_with="direct", epsilon=1e-4,
+                          num_samples_to_estimate_support=1000000):
     """
     Return x_obs-sequentially-trained TSNPE posterior 
     """
@@ -503,7 +504,7 @@ def train_tsnpe_posterior(simulator, prior, x_obs, num_sequential_rounds, num_si
 
     for r in range(num_sequential_rounds):
         if show_progress:
-            print(f"\n ------------- SEQUENTIAL ROUND {r+1} out of {num_sequential_rounds} -------------")
+            print(f"\n ------------- SEQUENTIAL ROUND {r} out of {num_sequential_rounds} -------------")
             print(f"Generating {num_simulations_per_round} training samples")
         parameter_samples = proposal.sample((num_simulations_per_round,))
         data_samples = simulator(parameter_samples)
@@ -515,9 +516,17 @@ def train_tsnpe_posterior(simulator, prior, x_obs, num_sequential_rounds, num_si
             # Final posterior shouldnt be conditioned on x_obs (so we can see how it infers other x)
             sequential_posterior = inference.build_posterior(sample_with=sample_with)
         else:
+            if show_progress:
+                print("\n Training density estimator")
             _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
+            if show_progress:
+                print("\n Density estimator trained")
             sequential_posterior = inference.build_posterior(sample_with=sample_with).set_default_x(x_obs)
-            accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon)
+            if show_progress:  
+                print(f"\n Approximating HPR region of density estimator with {num_samples_to_estimate_support} samples")
+            accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
+            if show_progress:
+                print("\n HPR region of density estimator approximated successfully.")
             proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
     return sequential_posterior
 
@@ -535,7 +544,8 @@ def sbc_ranks_tsnpe(simulator,
                     always_return_dict=False,
                     sample_with="direct",
                     restricted_prior_sample_with="direct",
-                    epsilon=1e-4):
+                    epsilon=1e-4,
+                    num_samples_to_estimate_support=1000000):
     """
     return normalized SBC ranks for TSNPE.
     """
@@ -554,7 +564,8 @@ def sbc_ranks_tsnpe(simulator,
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, 
-                          show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon)
+                          show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon,
+                          num_samples_to_estimate_support=num_samples_to_estimate_support)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample
@@ -583,7 +594,8 @@ def sbc_ranks_tsnpe(simulator,
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, 
-                          show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon)
+                          show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon,
+                          num_samples_to_estimate_support=num_samples_to_estimate_support)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample
