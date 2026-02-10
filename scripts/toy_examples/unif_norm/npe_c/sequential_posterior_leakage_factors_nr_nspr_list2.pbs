@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -N sequential_posterior_leakage_factors_nr_nspr_list2
+#PBS -l select=1:ncpus=1:mem=32gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o sequential_posterior_leakage_factors_nr_nspr_list2_most_recent.log
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python sequential_posterior_leakage_factors.py \
+    --num_sequential_rounds_list 2 2 2 2 3 3 3 3 4 4 4 4 \
+    --num_simulations_per_round_list 100 1000 10000 100000 100 1000 10000 100000 100 1000 10000 100000 \
+    --x_observed 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 \
+    --d 10 \
+    --num_posteriors_per_leakage_factor 20

@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -N amortized_posterior_leakage_factors_ns_list2
+#PBS -l select=1:ncpus=1:mem=32gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o amortized_posterior_leakage_factors_ns_list2_most_recent.log
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python amortized_posterior_leakage_factors.py \
+    --num_simulations_list 50 100 250 500 1000 2500 5000 10000 20000 50000 100000 \
+    --d 10 \
+    --x_observed 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.8 \
+    --num_posteriors_per_leakage_factor 20
+
+
