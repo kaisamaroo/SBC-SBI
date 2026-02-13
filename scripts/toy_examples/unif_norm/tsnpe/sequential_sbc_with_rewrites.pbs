@@ -21,7 +21,7 @@ test_function_name=${test_function_name:-None}
 sample_with=${sample_with:-direct}
 restricted_prior_sample_with=${restricted_prior_sample_with:-rejection}
 epsilon=${epsilon:-0.0001}
-
+num_samples_to_estimate_support=${num_samples_to_estimate_support:-1000000}
 cd $PBS_O_WORKDIR
 
 module load Python/3.9.6-GCCcore-11.2.0
@@ -40,4 +40,5 @@ python sequential_sbc_with_rewrites.py --sigma ${sigma} \
     --test_function_name ${test_function_name} \
     --sample_with ${sample_with} \
     --restricted_prior_sample_with ${restricted_prior_sample_with} \
-    --epsilon ${epsilon}
+    --epsilon ${epsilon} \
+    --num_samples_to_estimate_support ${num_samples_to_estimate_support}
