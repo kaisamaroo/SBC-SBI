@@ -56,7 +56,7 @@ def main(num_sequential_rounds, num_simulations_per_round, num_components,
                         muL, muU,
                         sigmasquaredL, sigmasquaredU)
     
-    amortized_posterior_config = {
+    sequential_posterior_config = {
         "num_sequential_rounds": num_sequential_rounds,
         "num_simulations_per_round": num_simulations_per_round,
         "num_components": num_components,
@@ -88,7 +88,7 @@ def main(num_sequential_rounds, num_simulations_per_round, num_components,
     config = {
         "leader_trajectory_config": leader_trajectory_config,
         "follower_trajectory_config": follower_trajectory_config,
-        "amortized_posterior_config": amortized_posterior_config,
+        "sequential_posterior_config": sequential_posterior_config,
         "prior_config": prior_config
     }
     

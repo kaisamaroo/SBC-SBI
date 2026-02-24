@@ -95,9 +95,9 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             sbc_time = np.nan
             if test_function_name == "all":
                 # make rank dict of np.nans
-                rank = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
+                rank_sequential = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
             else:
-                rank = {"": [np.nan]}
+                rank_sequential = {"": [np.nan]}
             print("\n Rank generation failed.")
         
         if (k == 0) and (not continue_experiment):

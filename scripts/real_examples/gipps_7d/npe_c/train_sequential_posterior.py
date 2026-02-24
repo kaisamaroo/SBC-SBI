@@ -7,6 +7,7 @@ from pathlib import Path
 import pickle
 import yaml
 import os
+import time
 
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "npe_c")
@@ -21,7 +22,8 @@ def main(num_sequential_rounds, num_simulations_per_round,
         vf0L, vf0U,
         prior_mean_mu, prior_variance_mu,
         prior_alpha_sigmasquared, prior_beta_sigmasquared,
-        tau, N, ll, psi, bl, leader_trajectory_ID, follower_trajectory_ID):
+        tau, N, ll, psi, bl, leader_trajectory_ID, follower_trajectory_ID,
+        density_estimator):
     
     prior_config = {
             "aL": aL,
@@ -47,18 +49,6 @@ def main(num_sequential_rounds, num_simulations_per_round,
                         vf0L, vf0U,
                         prior_mean_mu, prior_variance_mu,
                         prior_alpha_sigmasquared, prior_beta_sigmasquared)
-    
-    amortized_posterior_config = {
-        "num_sequential_rounds": num_sequential_rounds,
-        "num_simulations_per_round": num_simulations_per_round,
-        "tau": tau, 
-        "N": N,
-        "ll": ll, 
-        "psi": psi,
-        "bl": bl, 
-        "leader_trajectory_ID": leader_trajectory_ID,
-        "follower_trajectory_ID": follower_trajectory_ID
-    }
 
     leader_trajectory_name = f"leader_trajectory{leader_trajectory_ID}"
     path_to_leader_trajectory = trajectories_path + "/" + leader_trajectory_name + ".npz"
@@ -75,13 +65,6 @@ def main(num_sequential_rounds, num_simulations_per_round,
     # Retrieve follower trajectory config
     with open(path_to_follower_trajectory_config, "r") as f:
         follower_trajectory_config = yaml.safe_load(f) # Dictionary
-
-    config = {
-        "leader_trajectory_config": leader_trajectory_config,
-        "follower_trajectory_config": follower_trajectory_config,
-        "amortized_posterior_config": amortized_posterior_config,
-        "prior_config": prior_config
-    }
     
     # Retrieve xl, vl
     leader_trajectory = np.load(path_to_leader_trajectory)
@@ -91,15 +74,24 @@ def main(num_sequential_rounds, num_simulations_per_round,
     # Retrieve xf_obs
     follower_trajectory = np.load(path_to_follower_trajectory)
     xf_obs = follower_trajectory["xf"] # Observed follower trajectory that we condition our training on
+
+    # Initialize simulation and train time lists (one per round)
+    simulation_times = []
+    training_times = []
     
-    inference = NPE_C(prior=prior)
+    inference = NPE_C(prior=prior, density_estimator=density_estimator)
     proposal = prior
     for r in range(num_sequential_rounds):
         print(f"Round {r+1}:")
         print("Generating samples:")
+        sample_start_time = time.perf_counter()
         parameter_samples = proposal.sample((num_simulations_per_round,))
         data_samples = simulator(parameter_samples, tau, N, ll, psi, xl, vl, bl)
+        sample_end_time = time.perf_counter()
+        sample_time = sample_end_time - sample_start_time
+        simulation_times.append(sample_time)
         print("Samples generated successfully.")
+        training_start_time = time.perf_counter()
         if r == num_sequential_rounds - 1:
             print("Training posterior:")
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train()
@@ -111,6 +103,32 @@ def main(num_sequential_rounds, num_simulations_per_round,
             sequential_posterior = inference.build_posterior().set_default_x(xf_obs)
             print("Posterior trained successfully.")
             proposal = sequential_posterior
+        training_end_time = time.perf_counter()
+        training_time = training_end_time - training_start_time
+        training_times.append(training_time)
+
+
+    sequential_posterior_config = {
+        "num_sequential_rounds": num_sequential_rounds,
+        "num_simulations_per_round": num_simulations_per_round,
+        "tau": tau, 
+        "N": N,
+        "ll": ll, 
+        "psi": psi,
+        "bl": bl, 
+        "leader_trajectory_ID": leader_trajectory_ID,
+        "follower_trajectory_ID": follower_trajectory_ID,
+        "simulation_times": simulation_times,
+        "training_times": training_times,
+        "density_estimator": density_estimator
+    }
+
+    config = {
+        "leader_trajectory_config": leader_trajectory_config,
+        "follower_trajectory_config": follower_trajectory_config,
+        "sequential_posterior_config": sequential_posterior_config,
+        "prior_config": prior_config
+    }
 
     # Find next ID
     i = 0
@@ -160,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--ll", type=float, default=7.5)
     parser.add_argument("--psi", type=float, default=1.05)
     parser.add_argument("--bl", type=float, default=-4.)
+    parser.add_argument("--density_estimator", type=str, default="maf")
 
     args = parser.parse_args()
     main(args.num_sequential_rounds, args.num_simulations_per_round,
@@ -170,4 +189,5 @@ if __name__ == "__main__":
         args.vf0L, args.vf0U,
         args.prior_mean_mu, args.prior_variance_mu,
         args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
-        args.tau, args.N, args.ll, args.psi, args.bl, args.leader_trajectory_ID, args.follower_trajectory_ID)
+        args.tau, args.N, args.ll, args.psi, args.bl, args.leader_trajectory_ID, args.follower_trajectory_ID,
+        args.density_estimator)

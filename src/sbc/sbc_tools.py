@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import kstwobign # Kolmogorov distribution
 import torch
-from sbi.inference import NPE_A, NPE_C
+from sbi.inference import NPE_A, NPE_C, NPE
 from sbi.utils import RestrictedPrior, get_density_thresholder
 
 
@@ -381,11 +381,11 @@ def sbc_ranks_snpe_a_and_samples(simulator,
     return ranks, samples_dict
 
 
-def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, use_combined_loss=False, show_progress=True, sample_with='direct'):
+def train_snpe_c_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, use_combined_loss=False, show_progress=True, sample_with='direct', density_estimator="maf"):
     """
     Return x_obs-sequentially-trained SNPE-C posterior 
     """
-    inference = NPE_C(prior)
+    inference = NPE_C(prior, density_estimator=density_estimator)
     proposal = prior
     if use_combined_loss:
         print("\n Using combined loss.")
@@ -421,7 +421,8 @@ def sbc_ranks_snpe_c(simulator,
                     show_progress=True,
                     return_samples=False,
                     always_return_dict=False,
-                    sample_with="direct"):
+                    sample_with="direct",
+                    density_estimator="maf"):
     """
     return normalized SBC ranks for SNPE-C.
     """
@@ -439,7 +440,7 @@ def sbc_ranks_snpe_c(simulator,
                 print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with)
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with, density_estimator=density_estimator)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample
@@ -467,7 +468,7 @@ def sbc_ranks_snpe_c(simulator,
                 print("\n" + 12*"-" + f"SBC ROUND {i+1} OUT OF {N_iter}" + 12*"-")
             prior_sample = prior.sample() # Sample from prior. Returns 1D tensor
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
-            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with)
+            posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, use_combined_loss=use_combined_loss, sample_with=sample_with, density_estimator=density_estimator)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample
@@ -495,11 +496,11 @@ def sbc_ranks_snpe_c(simulator,
 
 def train_tsnpe_posterior(simulator, prior, x_obs, num_sequential_rounds, num_simulations_per_round, 
                           show_progress=True, sample_with='direct', restricted_prior_sample_with="direct", epsilon=1e-4,
-                          num_samples_to_estimate_support=1000000):
+                          num_samples_to_estimate_support=1000000, density_estimator="maf"):
     """
     Return x_obs-sequentially-trained TSNPE posterior 
     """
-    inference = NPE_C(prior)
+    inference = NPE(prior, density_estimator=density_estimator)
     proposal = prior
 
     for r in range(num_sequential_rounds):
@@ -545,7 +546,8 @@ def sbc_ranks_tsnpe(simulator,
                     sample_with="direct",
                     restricted_prior_sample_with="direct",
                     epsilon=1e-4,
-                    num_samples_to_estimate_support=1000000):
+                    num_samples_to_estimate_support=1000000,
+                    density_estimator="maf"):
     """
     return normalized SBC ranks for TSNPE.
     """
@@ -565,7 +567,7 @@ def sbc_ranks_tsnpe(simulator,
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, 
                           show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon,
-                          num_samples_to_estimate_support=num_samples_to_estimate_support)
+                          num_samples_to_estimate_support=num_samples_to_estimate_support, density_estimator=density_estimator)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample
@@ -595,7 +597,7 @@ def sbc_ranks_tsnpe(simulator,
             simulated_datapoint = simulator(prior_sample) # Simulate a datapoint from the simulator given the prior sample. Returns 1d tensor
             posterior_sequential = train_sequential_posterior(simulator, prior, simulated_datapoint, num_sequential_rounds, num_simulations_per_round, 
                           show_progress=show_progress, sample_with=sample_with, restricted_prior_sample_with=restricted_prior_sample_with, epsilon=epsilon,
-                          num_samples_to_estimate_support=num_samples_to_estimate_support)
+                          num_samples_to_estimate_support=num_samples_to_estimate_support, density_estimator=density_estimator)
             posterior_samples = posterior_sequential.sample((N_samp,), x=simulated_datapoint, show_progress_bars=False) # Numpy array of (num_samples, ) samples.
             if return_samples:
                 samples_dict[f"prior_sample_round_{i}"] = prior_sample

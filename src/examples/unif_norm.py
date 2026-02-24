@@ -272,96 +272,59 @@ def get_all_test_function_names_list(d=1):
     return all_test_function_names
 
 
+def plot_leakage_factors(leakage_factor_dict, type, alpha=0.1, ax=None, logscale=False):
+    # TO DO: Implement a heatmap for nr_nspr 
+    user_defined_ax = ax
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10,5))
 
+    allowed_types = ["d", "ns", "nr_nspr"]
+    if not type in allowed_types:
+        raise NotImplementedError(f"TYPE {type} NOT RECOGNISED! MUST BE ONE OF: 'd', 'ns', 'ns_nspr'!")
 
+    if type in ["d", "ns"]:
+        # Experiments that vary only 1 parameter (d or ns)
+        x = [k for k in leakage_factor_dict.keys()]
+    else:
+        # Experiments that vary nr_nspr
+        # Make axis integer labels and then re-label the x-axis with tuples
+        x = range(len(leakage_factor_dict))
 
+    median_leakage_factor_list = []
+    lq_leakage_factor_list = []
+    uq_leakage_factor_list = []
 
-
-
-
-
-
-
-
-
-
-
-def snpe_a_posterior_variance(x, sequential_posterior):
-    """
-    Return variance of posterior approximation for various possible observed x
+    for k, v in leakage_factor_dict.items():
+        v = v[~np.isnan(v)] # Remove nans (caused when SNPE-C failed)
+        median = np.quantile(v, 0.5)
+        uq = np.quantile(v, 1 - alpha / 2)
+        lq = np.quantile(v, alpha / 2)
+        median_leakage_factor_list.append(median)
+        lq_leakage_factor_list.append(lq)
+        uq_leakage_factor_list.append(uq)
     
-    Note that this is the variance after the final proposal correction, and therefore may
-    become negative (well known issue with SNPE-A).
-    """
-    if not isinstance(x, torch.Tensor):
-        x = torch.tensor([float(x)])
-    x = x.view(-1,1)
+    ax.plot(x, median_leakage_factor_list, label="median")
+    ax.fill_between(x, lq_leakage_factor_list, uq_leakage_factor_list, alpha=0.3, label=f"{100*(alpha / 2)}% and {100*(1 - alpha / 2)}% quantiles")
+    
+    if logscale:
+        ax.set_xscale('log')
+    ax.set_xlabel(type)
+    ax.set_ylabel("Leakage factor")
+    ax.set_title("Leakage factors against " + type)
+    if type == "nr_nspr":
+        ax.set_xticks(x, [str(t) for t in leakage_factor_dict.keys()])
 
-    # By default, sbi z-scores theta using an approximation to the prior variance
-    # We obtain this estimator sigma_hat below so that we can undo this transformation
-    sigma_hat = 1 / sequential_posterior.posterior_estimator._neural_net.net._transform._transforms[0]._scale
-    # Precision of proposal prior in z-scored theta space
-    latent_prec_proposal_prior = sequential_posterior.posterior_estimator._prec_pp.squeeze() # Precision of proposal prior
-    # Obtain precision of the (uncorrected) MDN
-    embedded_x = sequential_posterior.posterior_estimator._neural_net.net._embedding_net(x)
-    dist = sequential_posterior.posterior_estimator._neural_net.net._distribution
-    _, _, latent_prec_MDN, _, _ = dist.get_mixture_components(embedded_x) # Precision of density estimator
-    latent_prec_MDN = latent_prec_MDN.squeeze()
-    # Re-scale precisions using sigma_hat to undo z-scoring transformation
-    var_MDN = sigma_hat ** 2 / latent_prec_MDN
-    var_proposal_prior = sigma_hat ** 2 / latent_prec_proposal_prior
-    return 1 / ((1 / var_MDN) - (1 / var_proposal_prior))
+    plt.legend()
+    plt.show()
 
 
-def plot_snpe_a_posterior_variance(x_range, sequential_posterior, ylim=None, title=None, ax=None):
-    if not ax:
-        fig, ax = plt.subplots(figsize=(10,5))
-    x_range = torch.tensor(x_range)
-    posterior_variances = snpe_a_posterior_variance(x_range, sequential_posterior).detach()
-    ax.plot(x_range, np.where(posterior_variances >= 0, posterior_variances, np.nan), color="green", label="Positive posterior MDN variance (posterior well defined)")
-    ax.plot(x_range, np.where(posterior_variances < 0, posterior_variances, np.nan), color="red", label="Negative posterior MDN variance (posterior not defined)")
-    ax.axhline(0, color="k", linestyle="--")
-    ax.set_xlabel("x")
-    ax.set_ylabel("Variance")
-    if not title:
-        title = r"Variance of SNPE-A posterior approximation $\tilde{\pi}(\theta | x)$ for different x."
-    ax.set_title(title)
-    ax.legend()
-    if ylim:
-        ax.set_ylim(ylim)
-    if not ax:
-        plt.show()
-    return ax
 
 
-def plot_sequential_samples(sequential_posterior_simulations, sequential_posterior_config, x_observed, sigma, plot_true_posterior=False, axis_limits = None, alpha=0.5, title=None, ax=None):
-    if not ax:
-        fig, ax = plt.subplots(figsize=(10,5))
-    num_sequential_rounds = sequential_posterior_config["num_sequential_rounds"]
-    num_simulations_per_round = sequential_posterior_config["num_simulations_per_round"]
-    for r in range(num_sequential_rounds):
-        parameter_samples = sequential_posterior_simulations[f"parameter_samples_round_{r}"]
-        data_samples = sequential_posterior_simulations[f"data_samples_round_{r}"]
-        ax.scatter(data_samples, parameter_samples, alpha=alpha, label=f"Round {r+1} samples" + (" (final round)" if r+1==num_sequential_rounds else ""))
-    true_posterior_param_samples = true_posterior(sigma, x_observed).sample((num_simulations_per_round,))
-    true_posterior_data_samples = simulator(true_posterior_param_samples)
-    ax.scatter(true_posterior_data_samples, true_posterior_param_samples, alpha=alpha, label="True posterior samples")
-    if plot_true_posterior:
-        ax.axhline(x_observed*(sigma**2)/(1+sigma**2), color="k", label="True posterior mean", linestyle="--")
-        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) - 2*(sigma**2)/(1+sigma**2), color="blue", label="95% region", linestyle="--")
-        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) + 2*(sigma**2)/(1+sigma**2), color="blue", linestyle="--")
-        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) - 3*(sigma**2)/(1+sigma**2), color="red", label="99% region", linestyle="--")
-        ax.axhline(x_observed*(sigma**2)/(1+sigma**2) + 3*(sigma**2)/(1+sigma**2), color="red", linestyle="--")
-        ax.axvline(x_observed, color="k", linestyle="--")
-    if axis_limits:
-        ax.set_xlim(axis_limits)
-        ax.set_ylim(axis_limits)
-    if not title:
-        title = r"Training samples for each round of SNPE."
-    ax.set_title(title)
-    ax.legend()
-    ax.set_xlabel("x")
-    ax.set_ylabel(r"$\theta$")
-    if not ax:
-        plt.show()
-    return ax
+
+
+
+
+
+
+
+

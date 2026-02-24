@@ -13,9 +13,9 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
 
-def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss):
+def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator):
     prior = make_prior(L=L, U=U, d=d)
-    inference = NPE_C(prior=prior)
+    inference = NPE_C(prior=prior, density_estimator=density_estimator)
     proposal = prior
     try:
         for r in range(num_sequential_rounds):
@@ -27,7 +27,7 @@ def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequenti
 
             print("\n Training proposal:")
             if r == num_sequential_rounds - 1:
-                density_estimator = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
+                density_estimator_ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
                 sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
             else:
                 _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
@@ -35,7 +35,7 @@ def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequenti
                 proposal = sequential_posterior
             print("\n Proposal trained successfully:")
         print("\n Posterior trained successfully.")
-        return density_estimator
+        return density_estimator_
     except AssertionError:
         # Return None if SNPE-C fails
         return None
@@ -43,7 +43,8 @@ def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequenti
 
 def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_list, 
          d_list, use_combined_loss, num_posteriors_per_leakage_factor, 
-         num_posterior_samples_per_leakage_factor, x_observed, num_sequential_rounds, num_simulations_per_round):
+         num_posterior_samples_per_leakage_factor, x_observed, num_sequential_rounds, num_simulations_per_round,
+         density_estimator):
     
     config = {
         "sigma": sigma,
@@ -58,7 +59,8 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
         "num_simulations_per_round": num_simulations_per_round,
         "num_posteriors_per_leakage_factor": num_posteriors_per_leakage_factor,
         "num_posterior_samples_per_leakage_factor": num_posterior_samples_per_leakage_factor,
-        "x_observed": x_observed
+        "x_observed": x_observed,
+        "density_estimator": density_estimator
     }
 
     leakage_factor_dict = {}
@@ -87,13 +89,13 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
             for _ in range(num_posteriors_per_leakage_factor):
                 t0 = time.perf_counter()
                 print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
-                density_estimator = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
+                density_estimator_ = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator)
                 t1 = time.perf_counter()
                 runtime = t1 - t0
                 runtimes.append(runtime)
-                if density_estimator:
+                if density_estimator_:
                     # This runs if SNPE-C doesnt fail
-                    samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
+                    samples = density_estimator_.sample((num_posterior_samples_per_leakage_factor,),
                                                         condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
                     samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
                     leaked_mask = (samples < L) | (samples > U)
@@ -123,13 +125,13 @@ def main(sigma, d, L, U, num_sequential_rounds_list, num_simulations_per_round_l
             for _ in range(num_posteriors_per_leakage_factor):
                 print(f"\n Posterior {_+1} out of {num_posteriors_per_leakage_factor}")
                 t0 = time.perf_counter()
-                density_estimator = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
+                density_estimator_ = train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator)
                 t1 = time.perf_counter()
                 runtime = t1 - t0
                 runtimes.append(runtime)
-                if density_estimator:
+                if density_estimator_:
                     # This runs if SNPE-C doesnt fail
-                    samples = density_estimator.sample((num_posterior_samples_per_leakage_factor,),
+                    samples = density_estimator_.sample((num_posterior_samples_per_leakage_factor,),
                                                         condition=x_observed).detach() # shape torch.size([num_posterior_samples_per_leakage_factor, 1, d])
                     samples = samples.squeeze(1) # shape torch.size([num_posterior_samples_per_leakage_factor, d])
                     leaked_mask = (samples < L) | (samples > U)
@@ -182,8 +184,10 @@ if __name__ == "__main__":
     parser.add_argument("--L", type=float, default=-1.)
     parser.add_argument("--U", type=float, default=1.)
     parser.add_argument("--use_combined_loss", type=bool, default=True)
-    
+    parser.add_argument("--density_estimator", type=str, default="maf")
+
     args = parser.parse_args()
     main(args.sigma, args.d, args.L, args.U, args.num_sequential_rounds_list, args.num_simulations_per_round_list, 
          args.d_list, args.use_combined_loss, args.num_posteriors_per_leakage_factor, 
-         args.num_posterior_samples_per_leakage_factor, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round)
+         args.num_posterior_samples_per_leakage_factor, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round,
+         args.density_estimator)

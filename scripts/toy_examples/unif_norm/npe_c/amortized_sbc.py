@@ -43,10 +43,10 @@ def main(N_iter, N_samp, sigma, amortized_posterior_ID, d, L, U, test_function_n
             raise NotImplementedError("YET TO IMPLEMENT 1D TEST FUNCTIONS!")
         # Only save samples if d=1
         # Ranks will be a dict either way
-        ranks, samples_dict = sbc_ranks(model=simulator_, prior=prior, posterior=amortized_posterior, N_iter=N_iter, N_samp=N_samp, show_progress=False, return_samples=True, test_function=test_function, always_return_dict=True)   
+        ranks, samples_dict = sbc_ranks(model=simulator_, prior=prior, posterior=amortized_posterior, N_iter=N_iter, N_samp=N_samp, show_progress=True, return_samples=True, test_function=test_function, always_return_dict=True)   
     else:
         # Ranks will be a dict either way
-        ranks = sbc_ranks(model=simulator_, prior=prior, posterior=amortized_posterior, N_iter=N_iter, N_samp=N_samp, show_progress=False, return_samples=False, test_function=test_function, always_return_dict=True)
+        ranks = sbc_ranks(model=simulator_, prior=prior, posterior=amortized_posterior, N_iter=N_iter, N_samp=N_samp, show_progress=True, return_samples=False, test_function=test_function, always_return_dict=True)
 
     end_time = time.perf_counter()
     print("\n SBC finished.")

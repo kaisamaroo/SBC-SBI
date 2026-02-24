@@ -16,7 +16,7 @@ results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "ts
 
 def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round, 
          experiment_ID, d, L, U, test_function_name, sample_with, epsilon, restricted_prior_sample_with,
-         num_samples_to_estimate_support):
+         num_samples_to_estimate_support, density_estimator):
     # pbs files only let use input test_function_name as "None" (string), so convert if this is the case
     if test_function_name == "None":
         test_function_name = None
@@ -76,7 +76,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                                         sample_with=sample_with,
                                         restricted_prior_sample_with=restricted_prior_sample_with,
                                         epsilon=epsilon,
-                                        num_samples_to_estimate_support=num_samples_to_estimate_support)
+                                        num_samples_to_estimate_support=num_samples_to_estimate_support,
+                                        density_estimator=density_estimator)
             else:
                 rank_sequential = sbc_ranks_tsnpe(simulator_,
                                         prior,
@@ -92,7 +93,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                                         sample_with=sample_with,
                                         restricted_prior_sample_with=restricted_prior_sample_with,
                                         epsilon=epsilon,
-                                        num_samples_to_estimate_support=num_samples_to_estimate_support)
+                                        num_samples_to_estimate_support=num_samples_to_estimate_support,
+                                        density_estimator=density_estimator)
             end_time = time.perf_counter()
             print("\n Rank generated")
             sbc_time = end_time - start_time
@@ -102,9 +104,9 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
             sbc_time = np.nan
             if test_function_name == "all":
                 # make rank dict of np.nans
-                rank = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
+                rank_sequential = {test_function_name_: [np.nan] for test_function_name_ in all_test_function_names}
             else:
-                rank = {"": [np.nan]}
+                rank_sequential = {"": [np.nan]}
             print("\n Rank generation failed.")
         
         if (k == 0) and (not continue_experiment):
@@ -122,7 +124,8 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 "sample_with": sample_with,
                 "epsilon": epsilon, 
                 "restricted_prior_sample_with": restricted_prior_sample_with,
-                "num_samples_to_estimate_support": num_samples_to_estimate_support
+                "num_samples_to_estimate_support": num_samples_to_estimate_support,
+                "density_estimator": density_estimator
             }
 
             # Find next available ID
@@ -172,6 +175,7 @@ def main(sigma, N_iter, N_samp, num_sequential_rounds, num_simulations_per_round
                 and config["epsilon"] == epsilon
                 and config["restricted_prior_sample_with"] == restricted_prior_sample_with
                 and config["num_samples_to_estimate_support"] == num_samples_to_estimate_support
+                and config["density_estimator"] == density_estimator
             )
             if test_function_name=="all":
                 assert config["test_function_name"] == all_test_function_names
@@ -226,8 +230,10 @@ if __name__ == "__main__":
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
     parser.add_argument("--epsilon", type=float, default=1e-4)
     parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
+    parser.add_argument("--density_estimator", type=str, default="maf")
 
     args = parser.parse_args()
     main(args.sigma, args.N_iter, args.N_samp, args.num_sequential_rounds, args.num_simulations_per_round,
          args.experiment_ID, args.d, args.L, args.U, args.test_function_name, args.sample_with,
-         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support)
+         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support,
+         args.density_estimator)

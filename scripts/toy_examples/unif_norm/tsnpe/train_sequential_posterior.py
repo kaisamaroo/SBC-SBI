@@ -1,5 +1,5 @@
 import torch
-from sbi.inference import NPE_C
+from sbi.inference import NPE
 from sbi.utils import RestrictedPrior, get_density_thresholder
 import numpy as np
 import pickle
@@ -15,17 +15,18 @@ results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "ts
 
 
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, epsilon, 
-         restricted_prior_sample_with, num_samples_to_estimate_support):
+         restricted_prior_sample_with, num_samples_to_estimate_support, save_samples_high_d,
+         density_estimator):
     prior = make_prior(L=L, U=U, d=d)
-    inference = NPE_C(prior=prior)
+    inference = NPE(prior=prior, density_estimator=density_estimator)
     proposal = prior
 
     # Initialize simulation and train time lists (one per round)
     simulation_times = []
     training_times = []
 
-    # Initialize samples_dict to store all parameter and data samples if d = 1
-    if d == 1:  
+    # Initialize samples_dict to store all parameter and data samples if d = 1 or save_samples_high_d is True
+    if d == 1 or save_samples_high_d:  
         samples_dict = {}
 
     for r in range(num_sequential_rounds):
@@ -37,8 +38,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         sample_end_time = time.perf_counter()
         sample_time = sample_end_time - sample_start_time
         simulation_times.append(sample_time)
-        # Save samples only in 1D case
-        if d == 1:
+        # Save samples only in 1D case OR if save_samples_high_d is True
+        if d == 1 or save_samples_high_d:
             samples_dict[f"parameter_samples_round_{r}"] = parameter_samples
             samples_dict[f"data_samples_round_{r}"] = data_samples
         print("\n Samples generated")
@@ -46,11 +47,11 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         print("\n Training proposal:")
         training_start_time = time.perf_counter()
         if r == num_sequential_rounds - 1:
-            density_estimator = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
+            density_estimator_ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
             sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
         else:
             _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
-            sequential_posterior = inference.build_posterior().set_default_x(x_observed)
+            sequential_posterior = inference.build_posterior().set_default_x(torch.tensor(x_observed))
             accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
             proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
         training_end_time = time.perf_counter()
@@ -73,7 +74,9 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
               "U": U,
               "epsilon": epsilon,
               "restricted_prior_sample_with": restricted_prior_sample_with,
-              "num_samples_to_estimate_support": num_samples_to_estimate_support}
+              "num_samples_to_estimate_support": num_samples_to_estimate_support,
+              "save_samples_high_d": save_samples_high_d,
+              "density_estimator": density_estimator}
     
     # Find next ID
     i = 0
@@ -84,7 +87,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
     sequential_posterior_save_path = results_path + f"/sequential_posterior{i}.pkl"
     sequential_density_estimator_path = results_path + f"/sequential_posterior{i}_density_estimator.pkl"
     config_save_path = results_path + f"/sequential_posterior{i}.yaml"
-    if d == 1:
+    if d == 1 or save_samples_high_d:
         simulations_save_path = results_path + f"/sequential_posterior{i}_simulations.npz"
 
     print(f"\n Saving trained posterior to {sequential_posterior_save_path}:")
@@ -94,7 +97,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
 
     print(f"\n Saving trained density estimator to {sequential_density_estimator_path}:")
     with open(sequential_density_estimator_path, "wb") as handle:
-        pickle.dump(density_estimator, handle)
+        pickle.dump(density_estimator_, handle)
     print("\n Density estimator saved successfully.")
 
     print(f"\n Saving config file to {config_save_path}:")
@@ -102,8 +105,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         yaml.safe_dump(config, f)
     print("\n Config file saved successfully.")
 
-    # Save simulations if d = 1:
-    if d == 1:
+    # Save simulations if d = 1 or save_samples_high_d is True:
+    if d == 1 or save_samples_high_d:
         print(f"\n Saving simulations to {simulations_save_path}:")
         np.savez(simulations_save_path, **samples_dict)
         print("\n Simulations saved successfully.")
@@ -111,7 +114,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--sigma", type=float, default=1.)
-    parser.add_argument("--x_observed", type=float, required=True)
+    parser.add_argument("--x_observed", type=float, nargs="+", required=True)
     parser.add_argument("--num_sequential_rounds", type=int, default=4)
     parser.add_argument("--num_simulations_per_round", type=int, default=5000)
     parser.add_argument("--d", type=int, default=1)
@@ -120,8 +123,11 @@ if __name__ == "__main__":
     parser.add_argument("--epsilon", type=float, default=1e-4)
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
     parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
+    parser.add_argument("--save_samples_high_d", type=bool, default=False)
+    parser.add_argument("--density_estimator", type=str, default="maf")
 
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
          args.num_simulations_per_round, args.d, args.L, args.U,
-         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support)
+         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support,
+         args.save_samples_high_d, args.density_estimator)

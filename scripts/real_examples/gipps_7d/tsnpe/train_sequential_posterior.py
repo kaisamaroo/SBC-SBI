@@ -1,0 +1,203 @@
+import numpy as np
+import torch
+from sbi.inference import NPE
+from sbi.utils import RestrictedPrior, get_density_thresholder
+from examples.gipps import make_prior_7d_npe_c, simulator # Note that make_prior_npe_c also works fine for tsnpe. It was just to distinguish it from snpe_a, which needed a modified prior
+import argparse
+from pathlib import Path
+import pickle
+import yaml
+import os
+import time
+
+path_to_repo = Path(__file__).resolve().parents[4]
+results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "tsnpe")
+trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
+
+
+def main(num_sequential_rounds, num_simulations_per_round,
+        aL, aU,
+        bL, bU,
+        VL, VU,
+        xf0L, xf0U,
+        vf0L, vf0U,
+        prior_mean_mu, prior_variance_mu,
+        prior_alpha_sigmasquared, prior_beta_sigmasquared,
+        tau, N, ll, psi, bl, leader_trajectory_ID, follower_trajectory_ID,
+        epsilon, restricted_prior_sample_with, num_samples_to_estimate_support,
+        density_estimator):
+    
+    prior_config = {
+            "aL": aL,
+            "aU": aU,
+            "bL": bL,
+            "bU": bU,
+            "VL": VL,
+            "VU": VU,
+            "xf0L": xf0L,
+            "xf0U": xf0U,
+            "vf0L": vf0L,
+            "vf0U": vf0U,
+            "prior_mean_mu": prior_mean_mu,
+            "prior_variance_mu": prior_variance_mu,
+            "prior_alpha_sigmasquared": prior_alpha_sigmasquared,
+            "prior_beta_sigmasquared": prior_beta_sigmasquared,
+        }
+    
+    prior = make_prior_7d_npe_c(aL, aU,
+                        bL, bU,
+                        VL, VU,
+                        xf0L, xf0U,
+                        vf0L, vf0U,
+                        prior_mean_mu, prior_variance_mu,
+                        prior_alpha_sigmasquared, prior_beta_sigmasquared)
+    
+    leader_trajectory_name = f"leader_trajectory{leader_trajectory_ID}"
+    path_to_leader_trajectory = trajectories_path + "/" + leader_trajectory_name + ".npz"
+    path_to_leader_trajectory_config = trajectories_path + "/" + leader_trajectory_name + ".yaml"
+
+    follower_trajectory_name = f"follower_trajectory{follower_trajectory_ID}_leader_trajectory{leader_trajectory_ID}"
+    path_to_follower_trajectory = trajectories_path + "/" + follower_trajectory_name + ".npz"
+    path_to_follower_trajectory_config = trajectories_path + "/" + follower_trajectory_name + ".yaml"
+
+    # Retrieve leader trajectory config
+    with open(path_to_leader_trajectory_config, "r") as f:
+        leader_trajectory_config = yaml.safe_load(f) # Dictionary
+
+    # Retrieve follower trajectory config
+    with open(path_to_follower_trajectory_config, "r") as f:
+        follower_trajectory_config = yaml.safe_load(f) # Dictionary
+    
+    # Retrieve xl, vl
+    leader_trajectory = np.load(path_to_leader_trajectory)
+    xl = leader_trajectory["xl"]
+    vl = leader_trajectory["vl"]
+
+    # Retrieve xf_obs
+    follower_trajectory = np.load(path_to_follower_trajectory)
+    xf_obs = follower_trajectory["xf"] # Observed follower trajectory that we condition our training on
+
+    # Initialize simulation and train time lists (one per round)
+    simulation_times = []
+    training_times = []
+    
+    inference = NPE(prior=prior, density_estimator=density_estimator)
+    proposal = prior
+    for r in range(num_sequential_rounds):
+        print(f"Round {r+1}:")
+        print("Generating samples:")
+        sample_start_time = time.perf_counter()
+        parameter_samples = proposal.sample((num_simulations_per_round,))
+        data_samples = simulator(parameter_samples, tau, N, ll, psi, xl, vl, bl)
+        sample_end_time = time.perf_counter()
+        sample_time = sample_end_time - sample_start_time
+        simulation_times.append(sample_time)
+        print("Samples generated successfully.")
+        training_start_time = time.perf_counter()
+        if r == num_sequential_rounds - 1:
+            print("Training posterior:")
+            _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
+            sequential_posterior = inference.build_posterior()
+            print("Posterior trained successfully.")
+        else:
+            print("Training posterior:")
+            _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
+            sequential_posterior = inference.build_posterior().set_default_x(xf_obs)
+            print("Posterior trained successfully.")
+            accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
+            proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
+        training_end_time = time.perf_counter()
+        training_time = training_end_time - training_start_time
+        training_times.append(training_time)
+
+    sequential_posterior_config = {
+        "num_sequential_rounds": num_sequential_rounds,
+        "num_simulations_per_round": num_simulations_per_round,
+        "tau": tau, 
+        "N": N,
+        "ll": ll, 
+        "psi": psi,
+        "bl": bl, 
+        "leader_trajectory_ID": leader_trajectory_ID,
+        "follower_trajectory_ID": follower_trajectory_ID,
+        "epsilon": epsilon,
+        "restricted_prior_sample_with": restricted_prior_sample_with,
+        "num_samples_to_estimate_support": num_samples_to_estimate_support,
+        "simulation_times": simulation_times,
+        "training_times": training_times,
+        "density_estimator": density_estimator
+    }
+
+    config = {
+        "leader_trajectory_config": leader_trajectory_config,
+        "follower_trajectory_config": follower_trajectory_config,
+        "sequential_posterior_config": sequential_posterior_config,
+        "prior_config": prior_config
+    }
+
+    # Find next ID
+    i = 0
+    while os.path.exists(results_path + f"/sequential_posterior{i}_follower_trajectory{follower_trajectory_ID}_leader_trajectory{leader_trajectory_ID}.pkl"):
+        i += 1
+
+    sequential_posterior_save_path = results_path + f"/sequential_posterior{i}_follower_trajectory{follower_trajectory_ID}_leader_trajectory{leader_trajectory_ID}" + ".pkl"
+    config_save_path = results_path + f"/sequential_posterior{i}_follower_trajectory{follower_trajectory_ID}_leader_trajectory{leader_trajectory_ID}" + ".yaml"
+
+    print(f"Saving trained posterior to {sequential_posterior_save_path}:")
+    with open(sequential_posterior_save_path, "wb") as handle:
+        pickle.dump(sequential_posterior, handle)
+    print("Posterior saved successfully.")
+
+    print(f"Saving config file to path {config_save_path}:")
+    with open(config_save_path, "w") as f:
+        yaml.safe_dump(config, f)
+    print("Config file saved successfully.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # TRAINING PARAMETERS
+    parser.add_argument("--leader_trajectory_ID", type=int, required=True)
+    parser.add_argument("--follower_trajectory_ID", type=int, required=True)
+    parser.add_argument("--num_sequential_rounds", type=int, default=4)
+    parser.add_argument("--num_simulations_per_round", type=int, default=5000)
+
+    # PRIOR PARAMETERS
+    parser.add_argument("--aL", type=float, default=0.5)
+    parser.add_argument("--aU", type=float, default=3.5)
+    parser.add_argument("--bL", type=float, default=-6.)
+    parser.add_argument("--bU", type=float, default=-1.)
+    parser.add_argument("--VL", type=float, default=15.)
+    parser.add_argument("--VU", type=float, default=35.)
+    parser.add_argument("--xf0L", type=float, default=-60.)
+    parser.add_argument("--xf0U", type=float, default=-10.)
+    parser.add_argument("--vf0L", type=float, default=5.)
+    parser.add_argument("--vf0U", type=float, default=25.)
+    parser.add_argument("--prior_mean_mu", type=float, default=0.) 
+    parser.add_argument("--prior_variance_mu", type=float, default=9.)
+    parser.add_argument("--prior_alpha_sigmasquared", type=float, default=1.)
+    parser.add_argument("--prior_beta_sigmasquared", type=float, default=3.)
+    # GLOBAL PARAMETERS
+    parser.add_argument("--tau", type=float, default=0.5)
+    parser.add_argument("--N", type=int, default=100)
+    parser.add_argument("--ll", type=float, default=7.5)
+    parser.add_argument("--psi", type=float, default=1.05)
+    parser.add_argument("--bl", type=float, default=-4.)
+    parser.add_argument("--epsilon", type=float, default=1e-4)
+    parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
+    parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
+    parser.add_argument("--density_estimator", type=str, default="maf")
+
+
+    args = parser.parse_args()
+    main(args.num_sequential_rounds, args.num_simulations_per_round,
+        args.aL, args.aU,
+        args.bL, args.bU,
+        args.VL, args.VU,
+        args.xf0L, args.xf0U,
+        args.vf0L, args.vf0U,
+        args.prior_mean_mu, args.prior_variance_mu,
+        args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
+        args.tau, args.N, args.ll, args.psi, args.bl, args.leader_trajectory_ID, args.follower_trajectory_ID,
+        args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support,
+        args.density_estimator)

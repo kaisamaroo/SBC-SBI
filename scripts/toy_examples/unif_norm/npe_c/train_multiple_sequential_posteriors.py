@@ -13,9 +13,10 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
 
-def train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss):
+def train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
+                               d, L, U, use_combined_loss, density_estimator):
     prior = make_prior(L=L, U=U, d=d)
-    inference = NPE_C(prior=prior)
+    inference = NPE_C(prior=prior, density_estimator=density_estimator)
     proposal = prior
 
     # Initialize simulation and train time lists (one per round)
@@ -42,7 +43,7 @@ def train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_sim
         print("\n Training proposal:")
         training_start_time = time.perf_counter()
         if r == num_sequential_rounds - 1:
-            density_estimator = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
+            density_estimator_ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
             sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
         else:
             _ = inference.append_simulations(parameter_samples, data_samples, proposal=proposal).train(use_combined_loss=use_combined_loss)
@@ -65,12 +66,15 @@ def train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_sim
               "d": d,
               "L": L,
               "U": U,
-              "use_combined_loss": use_combined_loss}
+              "use_combined_loss": use_combined_loss,
+              "density_estimator": density_estimator}
     
-    return sequential_posterior, density_estimator, config
+    return sequential_posterior, density_estimator_, config
 
 
-def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, num_sequential_rounds_list, num_simulations_per_round_list, d_list):
+def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U,
+         use_combined_loss, num_sequential_rounds_list, num_simulations_per_round_list, d_list,
+         density_estimator):
     multiple_sequential_posteriors_dict = {"sequential_posteriors": [],
                       "density_estimators": [],
                       "configs": []}
@@ -82,15 +86,15 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
         raise ValueError("INVALID INPUT TYPES: EITHER BOTH num_sequential_rounds_list AND num_simulations_per_round_list MUST BE LISTS, XOR d_list MUST BE A LIST! Currently, both are true!")
     elif both_nr_nspr_are_lists:
         for num_sequential_rounds, num_simulations_per_round in zip(num_sequential_rounds_list, num_simulations_per_round_list):
-            sequential_posterior, density_estimator, config = train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
+            sequential_posterior, density_estimator_, config = train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator)
             multiple_sequential_posteriors_dict["sequential_posteriors"].append(sequential_posterior)
-            multiple_sequential_posteriors_dict["density_estimators"].append(density_estimator)
+            multiple_sequential_posteriors_dict["density_estimators"].append(density_estimator_)
             multiple_sequential_posteriors_dict["configs"].append(config)
     elif d_is_list:
         for d in d_list:
-            sequential_posterior, density_estimator, config = train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss)
+            sequential_posterior, density_estimator_, config = train_sequential_posterior(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator)
             multiple_sequential_posteriors_dict["sequential_posteriors"].append(sequential_posterior)
-            multiple_sequential_posteriors_dict["density_estimators"].append(density_estimator)
+            multiple_sequential_posteriors_dict["density_estimators"].append(density_estimator_)
             multiple_sequential_posteriors_dict["configs"].append(config)
     else:
         raise ValueError("INVALID INPUT TYPES: EITHER BOTH num_sequential_rounds_list AND num_simulations_per_round_list MUST BE LISTS, XOR d_list MUST BE A LIST! Currently, neither are true!")
@@ -123,6 +127,9 @@ if __name__ == "__main__":
     parser.add_argument("--L", type=float, default=-1.)
     parser.add_argument("--U", type=float, default=1.)
     parser.add_argument("--use_combined_loss", type=bool, default=False)
+    parser.add_argument("--density_estimator", type=str, default="maf")
 
     args = parser.parse_args()
-    main(args.sigma, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round, args.d, args.L, args.U, args.use_combined_loss, args.num_sequential_rounds_list, args.num_simulations_per_round_list, args.d_list)
+    main(args.sigma, args.x_observed, args.num_sequential_rounds, args.num_simulations_per_round, 
+         args.d, args.L, args.U, args.use_combined_loss, args.num_sequential_rounds_list,
+         args.num_simulations_per_round_list, args.d_list, args.density_estimator)
