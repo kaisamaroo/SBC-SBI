@@ -53,7 +53,7 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d,
             _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
             sequential_posterior = inference.build_posterior().set_default_x(torch.tensor(x_observed))
             accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
-            proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
+            proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with, posterior=sequential_posterior)
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
         training_times.append(training_time)

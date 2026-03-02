@@ -123,4 +123,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
          args.num_simulations_per_round, args.d, args.L, args.U, args.use_combined_loss,
-         args.save_samples_high_d. args.density_estimator)
+         args.save_samples_high_d, args.density_estimator)

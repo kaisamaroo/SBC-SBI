@@ -13,7 +13,9 @@ path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "toy_examples" / "unif_norm" / "npe_c")
 
 
-def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds, num_simulations_per_round, d, L, U, use_combined_loss, density_estimator):
+def train_sequential_posterior_density_estimator(sigma, x_observed, num_sequential_rounds,
+                                                 num_simulations_per_round, d, L, U, use_combined_loss,
+                                                 density_estimator):
     prior = make_prior(L=L, U=U, d=d)
     inference = NPE_C(prior=prior, density_estimator=density_estimator)
     proposal = prior

@@ -528,7 +528,7 @@ def train_tsnpe_posterior(simulator, prior, x_obs, num_sequential_rounds, num_si
             accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
             if show_progress:
                 print("\n HPR region of density estimator approximated successfully.")
-            proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with)
+            proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with, posterior=sequential_posterior)
     return sequential_posterior
 
 
