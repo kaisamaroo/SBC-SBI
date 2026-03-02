@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("--U", type=float, default=1.)
     parser.add_argument("--density_estimator", type=str, default="maf")
     parser.add_argument("--num_repetitions", type=int, default=1)
-    parser.add_argument("--vi_method", type=str, default="fKL")
+    parser.add_argument("--vi_method", type=str, default="rKL")
     
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
