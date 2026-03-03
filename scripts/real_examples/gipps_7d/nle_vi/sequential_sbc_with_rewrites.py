@@ -6,7 +6,7 @@ import scipy
 from torch.distributions import Exponential, Normal, InverseGamma, MultivariateNormal
 from sbi.utils import BoxUniform, MultipleIndependent
 from examples.gipps import make_prior_7d_npe_c, simulator, get_test_function, all_test_function_names
-from sbc.sbc_tools import sbc_ranks_nle_mcmc, train_nle_mcmc_posterior
+from sbc.sbc_tools import sbc_ranks_nle_vi, train_nle_vi_posterior
 import argparse
 from pathlib import Path
 import pickle
@@ -15,7 +15,7 @@ import os
 import time
 
 path_to_repo = Path(__file__).resolve().parents[4]
-results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "nle_mcmc")
+results_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "nle_vi")
 trajectories_path = str(path_to_repo / "results" / "real_examples" / "gipps_7d" / "trajectories")
 
 
@@ -28,7 +28,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
         vf0L, vf0U,
         prior_mean_mu, prior_variance_mu,
         prior_alpha_sigmasquared, prior_beta_sigmasquared,
-        tau, N, ll, psi, bl, experiment_ID, density_estimator, mcmc_method):
+        tau, N, ll, psi, bl, experiment_ID, density_estimator, vi_method):
     
     # By default, experiment_ID is -1, meaning we start a new experiment ID.
     continue_experiment = experiment_ID >= 0
@@ -98,9 +98,9 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
             start_time = time.perf_counter()
             # rank is always a dictionary, even if only 1 test function is passed
             
-            rank = sbc_ranks_nle_mcmc(simulator_,
+            rank = sbc_ranks_nle_vi(simulator_,
                         prior,
-                        train_nle_mcmc_posterior,
+                        train_nle_vi_posterior,
                         test_function=test_function,
                         N_iter=1,
                         N_samp=N_samp,
@@ -110,7 +110,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                         return_samples=False,
                         always_return_dict=True,
                         density_estimator=density_estimator,
-                        mcmc_method=mcmc_method)
+                        vi_method=vi_method)
             end_time = time.perf_counter()
             sbc_time = end_time - start_time
             print("\n Rank generated")
@@ -142,7 +142,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                     "sbc_times": [sbc_time],
                     "total_sbc_time": sbc_time if not np.isnan(sbc_time) else 0,
                     "density_estimator": density_estimator,
-                    "mcmc_method": mcmc_method
+                    "vi_method": vi_method
                 }
 
             config = {
@@ -190,7 +190,7 @@ def main(N_iter, N_samp, num_sequential_rounds, num_simulations_per_round,
                 and config["leader_trajectory_config"] == leader_trajectory_config
                 and config["prior_config"] == prior_config
                 and config["sbc_config"]["density_estimator"] == density_estimator
-                and config["sbc_config"]["mcmc_method"] == mcmc_method
+                and config["sbc_config"]["vi_method"] == vi_method
             )
             if test_function_name=="all":
                 assert config["sbc_config"]["test_function_name"] == all_test_function_names
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--leader_trajectory_ID", type=int, required=True)
     parser.add_argument("--experiment_ID", type=int, default=-1)
     parser.add_argument("--density_estimator", type=str, default="maf")
-    parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
+    parser.add_argument("--vi_method", type=str, default="rKL")
 
     
     parser.add_argument("--aL", type=float, default=0.5)
@@ -265,4 +265,4 @@ if __name__ == "__main__":
         args.prior_mean_mu, args.prior_variance_mu,
         args.prior_alpha_sigmasquared, args.prior_beta_sigmasquared,
         args.tau, args.N, args.ll, args.psi, args.bl, args.experiment_ID,
-        args.density_estimator, args.mcmc_method)
+        args.density_estimator, args.vi_method)

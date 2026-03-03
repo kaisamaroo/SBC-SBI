@@ -7,17 +7,13 @@
 #PBS -m bea
 #PBS -o sequential_sbc_with_rewrites_most_recent.log
 
-N_iter=${N_iter:-100}
+N_iter=${N_iter:-1000}
 N_samp=${N_samp:-100}
 test_function_name=${test_function_name:-all}
 num_sequential_rounds=${num_sequential_rounds:-4}
 num_simulations_per_round=${num_simulations_per_round:-5000}
-density_estimator=${density_estimator:-maf}
-sample_with=${sample_with:-direct}
-restricted_prior_sample_with=${restricted_prior_sample_with:-rejection}
-epsilon=${epsilon:-1e-4}
-num_samples_to_estimate_support=${num_samples_to_estimate_support:-1000000}
-
+classifier=${classifier:-resnet}
+mcmc_method=${mcmc_method:-slice_np_vectorized}
 
 aL=${aL:-0.5}
 aU=${aU:-3.5}
@@ -82,8 +78,5 @@ python sequential_sbc_with_rewrites.py \
   --bl "$bl" \
   --leader_trajectory_ID "$leader_trajectory_ID" \
   --experiment_ID "$experiment_ID" \
-  --density_estimator "$density_estimator" \
-  --sample_with "$sample_with" \
-  --restricted_prior_sample_with "$restricted_prior_sample_with" \
-  --epsilon "$epsilon" \
-  --num_samples_to_estimate_support "$num_samples_to_estimate_support"
+  --classifier "$classifier" \
+  --mcmc_method "$mcmc_method"

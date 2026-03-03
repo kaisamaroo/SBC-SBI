@@ -7,11 +7,12 @@
 #PBS -m bea
 #PBS -o sequential_sbc_with_rewrites_most_recent.log
 
-N_iter=${N_iter:-100}
+N_iter=${N_iter:-1000}
 N_samp=${N_samp:-100}
 test_function_name=${test_function_name:-all}
 num_sequential_rounds=${num_sequential_rounds:-4}
 num_simulations_per_round=${num_simulations_per_round:-5000}
+density_estimator=${density_estimator:-maf}
 
 aL=${aL:-0.5}
 aU=${aU:-3.5}
@@ -75,4 +76,5 @@ python sequential_sbc_with_rewrites.py \
   --psi "$psi" \
   --bl "$bl" \
   --leader_trajectory_ID "$leader_trajectory_ID" \
-  --experiment_ID "$experiment_ID"
+  --experiment_ID "$experiment_ID" \
+  --density_estimator "$density_estimator"
