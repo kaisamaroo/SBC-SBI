@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -N d25k512_sequential_posterior_KLs_and_squared_norms
+#PBS -l select=1:ncpus=5:mem=32gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o d25k512_sequential_posterior_KLs_and_squared_norms_most_recent.log
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python npe_c/sequential_posterior_KLs_and_squared_norms.py --d 25 --k 512 --L -6.66 --U 6.66 --num_repetitions 10 --num_sequential_rounds 8 &
+python nle_mcmc/sequential_posterior_KLs_and_squared_norms.py --d 25 --k 512 --L -6.66 --U 6.66 --num_repetitions 10 --num_sequential_rounds 8 --mcmc_method "nuts_pyro" &
+python nle_vi/sequential_posterior_KLs_and_squared_norms.py --d 25 --k 512 --L -6.66 --U 6.66 --num_repetitions 10 --num_sequential_rounds 8 --vi_method "rKL" &
+python nre/sequential_posterior_KLs_and_squared_norms.py --d 25 --k 512 --L -6.66 --U 6.66 --num_repetitions 10 --num_sequential_rounds 8 --mcmc_method "nuts_pyro" &
+python tsnpe/sequential_posterior_KLs_and_squared_norms.py --d 25 --k 512 --L -6.66 --U 6.66 --num_repetitions 10 --num_sequential_rounds 8 --restricted_prior_sample_with "sir" &
+
+wait
