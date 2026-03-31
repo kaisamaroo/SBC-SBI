@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N nle_vi_d50_sequential_posterior_KLs_and_squared_norms
+#PBS -l select=1:ncpus=1:mem=32gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o nle_vi_d50_sequential_posterior_KLs_and_squared_norms_most_recent.log
+
+cd $PBS_O_WORKDIR
+
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python nle_vi/sequential_posterior_KLs_and_squared_norms.py --d 25 --L -6.66 --U 6.66 --x_observed 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 --num_repetitions 10 --num_sequential_rounds 8 --vi_method "rKL"
