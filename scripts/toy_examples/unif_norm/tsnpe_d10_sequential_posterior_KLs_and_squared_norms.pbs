@@ -9,6 +9,8 @@
 
 cd $PBS_O_WORKDIR
 
+module purge
+module load tools/prod
 module load Python/3.9.6-GCCcore-11.2.0
 
 source ~/venvs/sbi_venv/bin/activate

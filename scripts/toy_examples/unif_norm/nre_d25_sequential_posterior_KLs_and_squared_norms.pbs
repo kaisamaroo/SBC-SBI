@@ -1,14 +1,16 @@
 #!/bin/bash
-#PBS -N nre_d50_sequential_posterior_KLs_and_squared_norms
+#PBS -N nre_d25_sequential_posterior_KLs_and_squared_norms
 #PBS -l select=1:ncpus=1:mem=32gb
 #PBS -l walltime=72:00:00
 #PBS -j oe
 #PBS -M kai.samaroo22@imperial.ac.uk
 #PBS -m bea
-#PBS -o nre_d50_sequential_posterior_KLs_and_squared_norms_most_recent.log
+#PBS -o nre_d25_sequential_posterior_KLs_and_squared_norms_most_recent.log
 
 cd $PBS_O_WORKDIR
 
+module purge
+module load tools/prod
 module load Python/3.9.6-GCCcore-11.2.0
 
 source ~/venvs/sbi_venv/bin/activate
