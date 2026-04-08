@@ -32,7 +32,10 @@ def true_posterior_log_p(theta, x, sigma, d):
 
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
          d, L, U, density_estimator, num_repetitions, epsilon, restricted_prior_sample_with, 
-         num_samples_to_estimate_support):
+         num_samples_to_estimate_support, save_posteriors):
+    
+    if save_posteriors:
+        posteriors_dict = {f"repetition_{r}": {} for r in range(num_repetitions)}
 
     # Store each KL as a list (each list has length num_repetitions)
     KLs_dict = {f"round_{r}": np.zeros(num_repetitions) for r in range(num_sequential_rounds)}
@@ -86,9 +89,13 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
             if r == num_sequential_rounds - 1:
                 density_estimator_ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
                 sequential_posterior = inference.build_posterior() # Don't set default x for returned posterior
+                if save_posteriors:
+                    posteriors_dict[f"repetition_{rep}"][f"round_{r}"] = sequential_posterior
             else:
                 density_estimator_ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
                 sequential_posterior = inference.build_posterior().set_default_x(torch.tensor(x_observed))
+                if save_posteriors:
+                    posteriors_dict[f"repetition_{rep}"][f"round_{r}"] = sequential_posterior
                 accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
                 proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with, posterior=sequential_posterior)
             training_end_time = time.perf_counter()
@@ -130,7 +137,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
               "epsilon": epsilon,
               "restricted_prior_sample_with": restricted_prior_sample_with,
               "num_samples_to_estimate_support": num_samples_to_estimate_support,
-              "num_repetitions": num_repetitions}
+              "num_repetitions": num_repetitions,
+              "save_posteriors": save_posteriors}
     
     # Find next ID
     i = 0
@@ -141,6 +149,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
     config_save_path = results_path + f"/KLs_squared_norms{i}.yaml"
     KLs_save_path = results_path + f"/KLs_squared_norms{i}_KLs_dict.npz"
     squared_norms_save_path = results_path + f"/KLs_squared_norms{i}_squared_norms_dict.npz"
+    if save_posteriors:
+        posteriors_dict_save_path = results_path + f"/KLs_squared_norms{i}_posteriors_dict.pkl"
 
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
@@ -154,6 +164,12 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
     print(f"\n Saving squared norms to {squared_norms_save_path}:")
     np.savez(squared_norms_save_path, **squared_norms_dict)
     print("\n Squared norms saved successfully.")
+
+    if save_posteriors:
+        print(f"\n Saving posteriors to {posteriors_dict_save_path}:")
+        with open(posteriors_dict_save_path, "wb") as f:
+            pickle.dump(posteriors_dict, f)
+        print(f"\n Posteriors saved successfully.")
 
 
 if __name__ == "__main__":
@@ -170,9 +186,12 @@ if __name__ == "__main__":
     parser.add_argument("--epsilon", type=float, default=1e-4)
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
     parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
+    parser.add_argument("--save_posteriors", type=bool, default=False)
+
     
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
          args.num_simulations_per_round, args.d, args.L, args.U,
          args.density_estimator, args.num_repetitions,
-         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support)
+         args.epsilon, args.restricted_prior_sample_with, args.num_samples_to_estimate_support,
+         args.save_posteriors)

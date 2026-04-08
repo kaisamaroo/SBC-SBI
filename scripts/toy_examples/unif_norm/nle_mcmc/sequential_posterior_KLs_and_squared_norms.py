@@ -111,7 +111,10 @@ def sample_covariance_matrix(theta, mu_hat):
 
 
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
-         d, L, U, density_estimator, num_repetitions, mcmc_method):
+         d, L, U, density_estimator, num_repetitions, mcmc_method, save_posteriors):
+    
+    if save_posteriors:
+        posteriors_dict = {f"repetition_{r}": {} for r in range(num_repetitions)}
 
     # Store each KL as a list (each list has length num_repetitions)
     KLs_dict = {f"round_{r}": np.zeros(num_repetitions) for r in range(num_sequential_rounds)}
@@ -165,6 +168,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
             ########## TRAINING (no need for round split)
             density_estimator_ = inference.append_simulations(parameter_samples, data_samples).train()
             sequential_posterior = inference.build_posterior(sample_with="mcmc", mcmc_method=mcmc_method).set_default_x(torch.tensor(x_observed))
+            if save_posteriors:
+                posteriors_dict[f"repetition_{rep}"][f"round_{r}"] = sequential_posterior
             proposal = sequential_posterior
             ##########
             training_end_time = time.perf_counter()
@@ -205,7 +210,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
               "U": U,
               "density_estimator": density_estimator,
               "num_repetitions": num_repetitions,
-              "mcmc_method": mcmc_method}
+              "mcmc_method": mcmc_method,
+              "save_posteriors": save_posteriors}
     
     # Find next ID
     i = 0
@@ -216,6 +222,8 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
     config_save_path = results_path + f"/KLs_squared_norms{i}.yaml"
     KLs_save_path = results_path + f"/KLs_squared_norms{i}_KLs_dict.npz"
     squared_norms_save_path = results_path + f"/KLs_squared_norms{i}_squared_norms_dict.npz"
+    if save_posteriors:
+        posteriors_dict_save_path = results_path + f"/KLs_squared_norms{i}_posteriors_dict.pkl"
 
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
@@ -230,6 +238,13 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
     np.savez(squared_norms_save_path, **squared_norms_dict)
     print("\n Squared norms saved successfully.")
 
+    if save_posteriors:
+        print(f"\n Saving posteriors to {posteriors_dict_save_path}:")
+        with open(posteriors_dict_save_path, "wb") as f:
+            pickle.dump(posteriors_dict, f)
+        print(f"\n Posteriors saved successfully.")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -243,8 +258,11 @@ if __name__ == "__main__":
     parser.add_argument("--density_estimator", type=str, default="maf")
     parser.add_argument("--num_repetitions", type=int, default=1)
     parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
-    
+    parser.add_argument("--save_posteriors", type=bool, default=False)
+
+
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
          args.num_simulations_per_round, args.d, args.L, args.U,
-         args.density_estimator, args.num_repetitions, args.mcmc_method)
+         args.density_estimator, args.num_repetitions, args.mcmc_method, 
+         args.save_posteriors)
