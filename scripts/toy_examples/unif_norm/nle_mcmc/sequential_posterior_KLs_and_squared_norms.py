@@ -113,8 +113,11 @@ def sample_covariance_matrix(theta, mu_hat):
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
          d, L, U, density_estimator, num_repetitions, mcmc_method, save_posteriors):
     
-    if save_posteriors:
+    if save_posteriors in ["True", "true"]:
+        save_posteriors = True
         posteriors_dict = {f"repetition_{r}": {} for r in range(num_repetitions)}
+    else:
+        save_posteriors = False
 
     # Store each KL as a list (each list has length num_repetitions)
     KLs_dict = {f"round_{r}": np.zeros(num_repetitions) for r in range(num_sequential_rounds)}
@@ -258,7 +261,7 @@ if __name__ == "__main__":
     parser.add_argument("--density_estimator", type=str, default="maf")
     parser.add_argument("--num_repetitions", type=int, default=1)
     parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
-    parser.add_argument("--save_posteriors", type=bool, default=False)
+    parser.add_argument("--save_posteriors", type=str, default="False")
 
 
     args = parser.parse_args()

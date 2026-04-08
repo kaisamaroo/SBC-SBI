@@ -34,8 +34,11 @@ def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
          d, L, U, density_estimator, num_repetitions, epsilon, restricted_prior_sample_with, 
          num_samples_to_estimate_support, save_posteriors):
     
-    if save_posteriors:
+    if save_posteriors in ["True", "true"]:
+        save_posteriors = True
         posteriors_dict = {f"repetition_{r}": {} for r in range(num_repetitions)}
+    else:
+        save_posteriors = False
 
     # Store each KL as a list (each list has length num_repetitions)
     KLs_dict = {f"round_{r}": np.zeros(num_repetitions) for r in range(num_sequential_rounds)}
@@ -186,7 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--epsilon", type=float, default=1e-4)
     parser.add_argument("--restricted_prior_sample_with", type=str, default="rejection")
     parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
-    parser.add_argument("--save_posteriors", type=bool, default=False)
+    parser.add_argument("--save_posteriors", type=str, default="False")
 
     
     args = parser.parse_args()

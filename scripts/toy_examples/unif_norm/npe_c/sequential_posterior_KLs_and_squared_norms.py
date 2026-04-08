@@ -32,8 +32,11 @@ def true_posterior_log_p(theta, x, sigma, d):
 def main(sigma, x_observed, num_sequential_rounds, num_simulations_per_round,
          d, L, U, use_combined_loss, density_estimator, num_repetitions, save_posteriors):
     
-    if save_posteriors:
+    if save_posteriors in ["True", "true"]:
+        save_posteriors = True
         posteriors_dict = {f"repetition_{r}": {} for r in range(num_repetitions)}
+    else:
+        save_posteriors = False
 
     # Store each KL as a list (each list has length num_repetitions)
     KLs_dict = {f"round_{r}": np.zeros(num_repetitions) for r in range(num_sequential_rounds)}
@@ -176,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_combined_loss", type=bool, default=False)
     parser.add_argument("--density_estimator", type=str, default="maf")
     parser.add_argument("--num_repetitions", type=int, default=1)
-    parser.add_argument("--save_posteriors", type=bool, default=False)
+    parser.add_argument("--save_posteriors", type=str, default="False")
     
     args = parser.parse_args()
     main(args.sigma, args.x_observed, args.num_sequential_rounds,
