@@ -15,4 +15,4 @@ module load Python/3.9.6-GCCcore-11.2.0
 
 source ~/venvs/sbi_venv/bin/activate
 
-python nle_mcmc/sequential_posterior_KLs_and_squared_norms.py --d 3 --L -3.37 --U 3.37 --x_observed 0 0 0 --num_repetitions 10 --num_sequential_rounds 8 --mcmc_method "nuts_pyro"
+python nle_mcmc/sequential_posterior_KLs_and_squared_norms.py --d 3 --L -3.37 --U 3.37 --x_observed 0 0 0 --num_repetitions 10 --num_sequential_rounds 8 --mcmc_method "nuts_pyro" --save_posteriors "True"

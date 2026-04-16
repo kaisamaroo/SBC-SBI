@@ -15,4 +15,4 @@ module load Python/3.9.6-GCCcore-11.2.0
 
 source ~/venvs/sbi_venv/bin/activate
 
-python tsnpe/sequential_posterior_KLs_and_squared_norms.py --d 100 --L -11.66 --U 11.66 --x_observed 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 --num_repetitions 10 --num_sequential_rounds 8 --restricted_prior_sample_with "sir"
+python tsnpe/sequential_posterior_KLs_and_squared_norms.py --d 100 --L -11.66 --U 11.66 --x_observed 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 --num_repetitions 10 --num_sequential_rounds 8 --restricted_prior_sample_with "sir" --save_posteriors "True"
