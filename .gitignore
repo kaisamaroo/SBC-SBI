@@ -1,8 +1,4 @@
 .DS_Store
 sbi-logs/
-results/toy_examples/unif_norm_high_d_data/hadamard_matrices/square_16384.npy
-scripts/toy_examples/unif_norm_high_d_data/*.log
 *.log
-*.log
-results/
 results/

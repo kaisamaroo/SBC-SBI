@@ -12,6 +12,8 @@ import math
 
 # flake8: noqa
 
+print(Path(__file__).resolve().parents[5])
+
 path_to_repo = Path(__file__).resolve().parents[4]
 results_path = str(path_to_repo / "results" / "real_examples" / "stoch_vol" / "npe_c")
 trajectories_path = str(path_to_repo / "results" / "real_examples" / "stoch_vol" / "data")
@@ -21,6 +23,11 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
          use_combined_loss, density_estimator,
          sigma2_alpha, sigma2_beta, beta2_alpha, beta2_beta, rho_lower,
          rho_upper, T, initial_distribution_variance):
+    
+    # Convert use_combined_loss into bool
+    use_combined_loss = False
+    if use_combined_loss not in ["False", "false"]:
+        use_combined_loss = True
 
     # Import data to condition on
     trajectory = np.load(trajectories_path + f"/trajectory{x_observed_ID}.npz")
@@ -108,7 +115,7 @@ if __name__ == "__main__":
                         help="Number of sequential rounds")
     parser.add_argument("--num_simulations_per_round", type=int, default=5000,
                         help="Number of simulations per sequential round")
-    parser.add_argument("--use_combined_loss", action="store_true", default=False,
+    parser.add_argument("--use_combined_loss", type=str, default="False",
                         help="Whether to use combined loss in SNPE-C")
     parser.add_argument("--density_estimator", type=str, default="maf",
                         help="Type of density estimator to use in SBI")

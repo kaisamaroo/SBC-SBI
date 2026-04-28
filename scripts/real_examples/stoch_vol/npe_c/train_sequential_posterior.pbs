@@ -1,0 +1,56 @@
+#!/bin/bash
+#PBS -N train_sequential_posterior
+#PBS -l select=1:ncpus=1:mem=32gb
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -M kai.samaroo22@imperial.ac.uk
+#PBS -m bea
+#PBS -o train_sequential_posterior_most_recent.log
+
+num_sequential_rounds=${num_sequential_rounds:-4}  
+num_simulations_per_round=${num_simulations_per_round:-5000}
+use_combined_loss=${use_combined_loss:-False}
+density_estimator=${density_estimator:-maf}
+
+sigma2_alpha=${sigma2_alpha:-3}
+sigma2_beta=${sigma2_beta:-0.2}
+beta2_alpha=${beta2_alpha:-3}
+beta2_beta=${beta2_beta:-5e-5}
+rho_lower=${rho_lower:-0.0}
+rho_upper=${rho_upper:-1.0}
+initial_distribution_variance=${initial_distribution_variance:-0.01}
+
+if [ -z "$x_observed_ID" ]; then
+    echo "ERROR: x_observed_ID is required"
+    exit 1
+fi
+
+if [ -z "$T" ]; then
+    echo "ERROR: T is required"
+    exit 1
+fi
+
+cd $PBS_O_WORKDIR
+
+module purge
+module load tools/prod
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ~/venvs/sbi_venv/bin/activate
+
+python train_sequential_posterior.py \
+    --x_observed_ID ${x_observed_ID} \
+    --T ${T} \
+    --sigma2_alpha ${sigma2_alpha} \
+    --sigma2_beta ${sigma2_beta} \
+    --beta2_alpha ${beta2_alpha} \
+    --beta2_beta ${beta2_beta} \
+    --rho_lower ${rho_lower} \
+    --rho_upper ${rho_upper} \
+    --initial_distribution_variance ${initial_distribution_variance} \
+    --num_sequential_rounds ${num_sequential_rounds} \
+    --num_simulations_per_round ${num_simulations_per_round} \
+    --use_combined_loss ${use_combined_loss} \
+    --density_estimator ${density_estimator}
+
+
