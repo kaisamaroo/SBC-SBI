@@ -25,9 +25,7 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
          rho_upper, T, initial_distribution_variance):
     
     # Convert use_combined_loss into bool
-    use_combined_loss = False
-    if use_combined_loss not in ["False", "false"]:
-        use_combined_loss = True
+    use_combined_loss = str(use_combined_loss).lower() not in ["false", "0", "no"]
 
     # Import data to condition on
     trajectory = np.load(trajectories_path + f"/trajectory{x_observed_ID}.npz")
