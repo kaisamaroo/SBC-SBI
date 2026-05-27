@@ -1,19 +1,18 @@
 #!/bin/bash
-#PBS -N train_sequential_posterior
+#PBS -N train_sequential_posterior_repetitions
+#PBS -J 0-9
 #PBS -l select=1:ncpus=1:mem=32gb
 #PBS -l walltime=72:00:00
 #PBS -j oe
 #PBS -M kai.samaroo22@imperial.ac.uk
 #PBS -m bea
-#PBS -o train_sequential_posterior_most_recent.log
+#PBS -o train_sequential_posterior_repetitions_most_recent.log
 
 x_observed_ID=${x_observed_ID:-0}
 
 num_sequential_rounds=${num_sequential_rounds:-8}  
 num_simulations_per_round=${num_simulations_per_round:-5000}
-epsilon=${epsilon:-0.0001}
-restricted_prior_sample_with=${restricted_prior_sample_with:-sir}
-num_samples_to_estimate_support=${num_samples_to_estimate_support:-1000000}
+use_combined_loss=${use_combined_loss:-False}
 density_estimator=${density_estimator:-maf}
 
 rho_lower=${rho_lower:-0.0}
@@ -46,7 +45,5 @@ python train_sequential_posterior.py \
     --tau_upper ${tau_upper} \
     --num_sequential_rounds ${num_sequential_rounds} \
     --num_simulations_per_round ${num_simulations_per_round} \
-    --epsilon ${epsilon} \
-    --restricted_prior_sample_with ${restricted_prior_sample_with} \
-    --num_samples_to_estimate_support ${num_samples_to_estimate_support} \
+    --use_combined_loss ${use_combined_loss} \
     --density_estimator ${density_estimator}

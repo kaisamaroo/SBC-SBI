@@ -87,12 +87,12 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
     
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/sequential_posterior{i}.yaml"):
+    while os.path.exists(results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}.yaml"):
         i += 1
     
     # Save paths
-    config_save_path = results_path + f"/sequential_posterior{i}.yaml"
-    posteriors_dict_save_path = results_path + f"/sequential_posterior{i}_posteriors_dict.pkl"
+    config_save_path = results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}.yaml"
+    posteriors_dict_save_path = results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}_posteriors_dict.pkl"
 
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
@@ -109,9 +109,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--x_observed_ID", type=int, default=0)
 
-    parser.add_argument("--num_sequential_rounds", type=int, default=10,
+    parser.add_argument("--num_sequential_rounds", type=int, default=8,
                         help="Number of sequential rounds")
-    parser.add_argument("--num_simulations_per_round", type=int, default=20000,
+    parser.add_argument("--num_simulations_per_round", type=int, default=5000,
                         help="Number of simulations per sequential round")
     parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
     parser.add_argument("--density_estimator", type=str, default="maf",

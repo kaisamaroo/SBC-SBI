@@ -1,11 +1,12 @@
 #!/bin/bash
-#PBS -N train_sequential_posterior
+#PBS -N train_sequential_posterior_repetitions
+#PBS -J 0-9
 #PBS -l select=1:ncpus=1:mem=32gb
 #PBS -l walltime=72:00:00
 #PBS -j oe
 #PBS -M kai.samaroo22@imperial.ac.uk
 #PBS -m bea
-#PBS -o train_sequential_posterior_most_recent.log
+#PBS -o train_sequential_posterior_repetitions_most_recent.log
 
 x_observed_ID=${x_observed_ID:-0}
 
