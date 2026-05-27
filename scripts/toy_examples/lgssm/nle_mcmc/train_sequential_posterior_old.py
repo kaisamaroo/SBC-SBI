@@ -34,10 +34,8 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         trajectory_config = yaml.safe_load(f)
     sigma_true = trajectory_config["sigma_true"]
 
-    # Dictionary to save each round's posterior samples
-    rho_samples_dict = {}
-    tau_samples_dict = {}
-    latent_states_samples_dict = {}
+    # Dictionary to save each round's posterior
+    posteriors_dict = {}
 
     # SBI training:
     prior = make_prior(rho_lower, rho_upper, tau_loc, tau_scale, tau_lower, tau_upper, T)
@@ -59,29 +57,17 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         simulation_times.append(sample_time)
         print("\n Samples generated")
 
-        if r > 0: # Don't save prior samples
-            rho_samples_dict[f"round_{r}"] = parameter_samples[:, 0].cpu().numpy()
-            tau_samples_dict[f"round_{r}"] = parameter_samples[:, 1].cpu().numpy()
-            latent_states_samples_dict[f"round_{r}"] = parameter_samples[:, 2:].cpu().numpy()
-
         print("\n Training proposal:")
         training_start_time = time.perf_counter()
         _ = inference.append_simulations(parameter_samples, data_samples).train()
         sequential_posterior = inference.build_posterior(sample_with="mcmc", mcmc_method=mcmc_method).set_default_x(x_observed)
+        posteriors_dict[f"round_{r}"] = sequential_posterior
         proposal = sequential_posterior
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
         training_times.append(training_time)
         print("\n Proposal trained successfully:")
     print("\n Posterior trained successfully.")
-
-    # Sample from final round posterior
-    print("\n Generating samples from final posterior:")
-    parameter_samples = sequential_posterior.sample((num_simulations_per_round,))
-    print("\n Samples generated")
-    rho_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 0].cpu().numpy()
-    tau_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 1].cpu().numpy()
-    latent_states_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 2:].cpu().numpy()
 
     config = {"x_observed_ID": x_observed_ID,
               "num_sequential_rounds": num_sequential_rounds,
@@ -111,26 +97,17 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
     
     # Save paths
     config_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}.yaml"
-    rho_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_rho_samples.npz"
-    tau_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_tau_samples.npz"
-    latent_states_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_latent_states_samples.npz"
+    posteriors_dict_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_posteriors_dict.pkl"
 
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
         yaml.safe_dump(config, f)
     print("\n Config file saved successfully.")
 
-    print(f"\n Saving rho samples to {rho_samples_save_path}:")
-    np.savez(rho_samples_save_path, **rho_samples_dict)
-    print(f"\n Rho samples saved successfully.")
-
-    print(f"\n Saving tau samples to {tau_samples_save_path}:")
-    np.savez(tau_samples_save_path, **tau_samples_dict)
-    print(f"\n Tau samples saved successfully.")
-
-    print(f"\n Saving latent states samples to {latent_states_samples_save_path}:")
-    np.savez(latent_states_samples_save_path, **latent_states_samples_dict)
-    print(f"\n Latent states samples saved successfully.")
+    print(f"\n Saving posteriors to {posteriors_dict_save_path}:")
+    with open(posteriors_dict_save_path, "wb") as f:
+        pickle.dump(posteriors_dict, f)
+    print(f"\n Posteriors saved successfully.")
 
 
 if __name__ == "__main__":
