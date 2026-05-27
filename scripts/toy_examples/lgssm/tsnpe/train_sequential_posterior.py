@@ -61,7 +61,7 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         print("\n Samples generated")
 
         if r > 0: # Don't save prior samples
-            parameter_samples_ = sequential_posterior.sample((num_simulations_per_round,))
+            parameter_samples_ = sequential_posterior.sample((2000,))
             rho_samples_dict[f"round_{r}"] = parameter_samples_[:, 0].cpu().numpy()
             tau_samples_dict[f"round_{r}"] = parameter_samples_[:, 1].cpu().numpy()
             latent_states_samples_dict[f"round_{r}"] = parameter_samples_[:, 2:].cpu().numpy()
@@ -81,7 +81,7 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
 
     # Sample from final round posterior
     print("\n Generating samples from final posterior:")
-    parameter_samples = sequential_posterior.sample((num_simulations_per_round,))
+    parameter_samples = sequential_posterior.sample((2000,))
     print("\n Samples generated")
     rho_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 0].cpu().numpy()
     tau_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 1].cpu().numpy()
