@@ -1,8 +1,9 @@
 import torch
-from sbi.inference import NRE
+from sbi.inference import NPE
 import numpy as np
 import pickle
 from examples.lgssm import make_prior, simulator
+from sbi.utils import RestrictedPrior, get_density_thresholder
 import argparse
 from pathlib import Path
 import os
@@ -15,12 +16,12 @@ import math
 print(Path(__file__).resolve().parents[5])
 
 path_to_repo = Path(__file__).resolve().parents[4]
-results_path = str(path_to_repo / "results" / "toy_examples" / "lgssm" / "nre")
+results_path = str(path_to_repo / "results" / "toy_examples" / "lgssm" / "tsnpe")
 trajectories_path = str(path_to_repo / "results" / "toy_examples" / "lgssm" / "data")
 
-# Density_estimator not needed and could be removed!
+
 def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
-         classifier, mcmc_method, density_estimator,
+         epsilon, restricted_prior_sample_with, num_samples_to_estimate_support, density_estimator,
          tau_loc, tau_scale, tau_lower, tau_upper, rho_lower,
          rho_upper, T):
 
@@ -34,14 +35,12 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         trajectory_config = yaml.safe_load(f)
     sigma_true = trajectory_config["sigma_true"]
 
-    # Dictionary to save each round's posterior samples
-    rho_samples_dict = {}
-    tau_samples_dict = {}
-    latent_states_samples_dict = {}
+    # Dictionary to save each round's posterior
+    posteriors_dict = {}
 
     # SBI training:
     prior = make_prior(rho_lower, rho_upper, tau_loc, tau_scale, tau_lower, tau_upper, T)
-    inference = NRE(prior=prior, classifier=classifier)
+    inference = NPE(prior=prior, density_estimator=density_estimator)
     proposal = prior
 
     # Initialize simulation and train time lists (one per round)
@@ -59,29 +58,19 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         simulation_times.append(sample_time)
         print("\n Samples generated")
 
-        if r > 0: # Don't save prior samples
-            rho_samples_dict[f"round_{r}"] = parameter_samples[:, 0].cpu().numpy()
-            tau_samples_dict[f"round_{r}"] = parameter_samples[:, 1].cpu().numpy()
-            latent_states_samples_dict[f"round_{r}"] = parameter_samples[:, 2:].cpu().numpy()
-
         print("\n Training proposal:")
         training_start_time = time.perf_counter()
-        _ = inference.append_simulations(parameter_samples, data_samples).train()
-        sequential_posterior = inference.build_posterior(sample_with="mcmc", mcmc_method=mcmc_method).set_default_x(x_observed)
-        proposal = sequential_posterior
+        _ = inference.append_simulations(parameter_samples, data_samples).train(force_first_round_loss=True)
+        sequential_posterior = inference.build_posterior().set_default_x(x_observed)
+        accept_reject_fn = get_density_thresholder(sequential_posterior, quantile=epsilon, num_samples_to_estimate_support=num_samples_to_estimate_support)
+        proposal = RestrictedPrior(prior, accept_reject_fn, sample_with=restricted_prior_sample_with, posterior=sequential_posterior)
+        
+        posteriors_dict[f"round_{r}"] = sequential_posterior
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
         training_times.append(training_time)
         print("\n Proposal trained successfully:")
     print("\n Posterior trained successfully.")
-
-    # Sample from final round posterior
-    print("\n Generating samples from final posterior:")
-    parameter_samples = sequential_posterior.sample((num_simulations_per_round,))
-    print("\n Samples generated")
-    rho_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 0].cpu().numpy()
-    tau_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 1].cpu().numpy()
-    latent_states_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 2:].cpu().numpy()
 
     config = {"x_observed_ID": x_observed_ID,
               "num_sequential_rounds": num_sequential_rounds,
@@ -89,8 +78,6 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
               "simulation_times": simulation_times,
               "training_times": training_times,
               "density_estimator": density_estimator,
-              "classifier": classifier,
-              "mcmc_method": mcmc_method,
               "rho_lower": rho_lower,
               "rho_upper": rho_upper,
               "T": T,
@@ -98,8 +85,11 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
               "tau_scale": tau_scale,
               "tau_lower": tau_lower,
               "tau_upper": tau_upper,
+              "epsilon": epsilon,
+              "restricted_prior_sample_with": restricted_prior_sample_with,
+              "num_samples_to_estimate_support": num_samples_to_estimate_support
               }
-    
+
     if num_sequential_rounds == 1:
         method = "amortized"
     else:
@@ -112,26 +102,17 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
     
     # Save paths
     config_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}.yaml"
-    rho_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_rho_samples.npz"
-    tau_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_tau_samples.npz"
-    latent_states_samples_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_latent_states_samples.npz"
-
+    posteriors_dict_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_posteriors_dict.pkl"
+    
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
         yaml.safe_dump(config, f)
     print("\n Config file saved successfully.")
 
-    print(f"\n Saving rho samples to {rho_samples_save_path}:")
-    np.savez(rho_samples_save_path, **rho_samples_dict)
-    print(f"\n Rho samples saved successfully.")
-
-    print(f"\n Saving tau samples to {tau_samples_save_path}:")
-    np.savez(tau_samples_save_path, **tau_samples_dict)
-    print(f"\n Tau samples saved successfully.")
-
-    print(f"\n Saving latent states samples to {latent_states_samples_save_path}:")
-    np.savez(latent_states_samples_save_path, **latent_states_samples_dict)
-    print(f"\n Latent states samples saved successfully.")
+    print(f"\n Saving posteriors to {posteriors_dict_save_path}:")
+    with open(posteriors_dict_save_path, "wb") as f:
+        pickle.dump(posteriors_dict, f)
+    print(f"\n Posteriors saved successfully.")
 
 
 if __name__ == "__main__":
@@ -144,8 +125,9 @@ if __name__ == "__main__":
                         help="Number of simulations per sequential round")
     parser.add_argument("--density_estimator", type=str, default="maf",
                         help="Type of density estimator to use in SBI")
-    parser.add_argument("--classifier", type=str, default="resnet")
-    parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
+    parser.add_argument("--epsilon", type=float, default=1e-4)
+    parser.add_argument("--restricted_prior_sample_with", type=str, default="sir")
+    parser.add_argument("--num_samples_to_estimate_support", type=int, default=1000000)
     
     parser.add_argument("--rho_lower", type=float, default=0.0,
                         help="Lower bound of Uniform prior on rho")
@@ -168,8 +150,9 @@ if __name__ == "__main__":
         x_observed_ID=args.x_observed_ID,
         num_sequential_rounds=args.num_sequential_rounds,
         num_simulations_per_round=args.num_simulations_per_round,
-        classifier=args.classifier,
-        mcmc_method=args.mcmc_method,
+        epsilon=args.epsilon,
+        restricted_prior_sample_with=args.restricted_prior_sample_with,
+        num_samples_to_estimate_support=args.num_samples_to_estimate_support,
         density_estimator=args.density_estimator,
         tau_loc=args.tau_loc,
         tau_scale=args.tau_scale,
