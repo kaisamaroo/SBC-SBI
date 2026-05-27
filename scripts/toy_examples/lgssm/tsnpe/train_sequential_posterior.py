@@ -89,16 +89,21 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
               "restricted_prior_sample_with": restricted_prior_sample_with,
               "num_samples_to_estimate_support": num_samples_to_estimate_support
               }
+
+    if num_sequential_rounds == 1:
+        method = "amortized"
+    else:
+        method = "sequential"
     
     # Find next ID
     i = 0
-    while os.path.exists(results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}.yaml"):
+    while os.path.exists(results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}.yaml"):
         i += 1
     
     # Save paths
-    config_save_path = results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}.yaml"
-    posteriors_dict_save_path = results_path + f"/sequential_posterior_T{T}_xobsid{x_observed_ID}_{i}_posteriors_dict.pkl"
-
+    config_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}.yaml"
+    posteriors_dict_save_path = results_path + "/" + method + f"_posterior_T{T}_xobsid{x_observed_ID}__{i}_posteriors_dict.pkl"
+    
     print(f"\n Saving config file to {config_save_path}:")
     with open(config_save_path, "w") as f:
         yaml.safe_dump(config, f)
