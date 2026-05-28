@@ -149,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--density_estimator", type=str, default="maf",
                         help="Type of density estimator to use in SBI")
     parser.add_argument("--classifier", type=str, default="resnet")
-    parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
+    parser.add_argument("--mcmc_method", type=str, default="nuts_pymc")
     parser.add_argument("--num_chains", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=1)
     
