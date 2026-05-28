@@ -14,6 +14,8 @@ num_sequential_rounds=${num_sequential_rounds:-8}
 num_simulations_per_round=${num_simulations_per_round:-5000}
 mcmc_method=${mcmc_method:-slice_np_vectorized}
 density_estimator=${density_estimator:-maf}
+num_chains=${num_chains:-2}  
+num_workers=${num_workers:-1}  
 
 rho_lower=${rho_lower:-0.0}
 rho_upper=${rho_upper:-1.0}
@@ -46,4 +48,6 @@ python train_sequential_posterior.py \
     --num_sequential_rounds ${num_sequential_rounds} \
     --num_simulations_per_round ${num_simulations_per_round} \
     --mcmc_method ${mcmc_method} \
-    --density_estimator ${density_estimator}
+    --density_estimator ${density_estimator} \
+    --num_chains ${num_chains} \
+    --num_workers ${num_workers}

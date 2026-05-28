@@ -22,7 +22,7 @@ trajectories_path = str(path_to_repo / "results" / "toy_examples" / "lgssm" / "d
 def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
          mcmc_method, density_estimator,
          tau_loc, tau_scale, tau_lower, tau_upper, rho_lower,
-         rho_upper, T):
+         rho_upper, T, num_chains, num_workers):
     
     # Import data to condition on
     trajectory = np.load(trajectories_path + f"/trajectory{x_observed_ID}.npz")
@@ -67,7 +67,9 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
         print("\n Training proposal:")
         training_start_time = time.perf_counter()
         _ = inference.append_simulations(parameter_samples, data_samples).train()
-        sequential_posterior = inference.build_posterior(sample_with="mcmc", mcmc_method=mcmc_method).set_default_x(x_observed)
+        sequential_posterior = inference.build_posterior(sample_with="mcmc", mcmc_method=mcmc_method,
+                                                         mcmc_parameters={"num_chains": num_chains,
+                                                                          "num_workers": num_workers}).set_default_x(x_observed)
         proposal = sequential_posterior
         training_end_time = time.perf_counter()
         training_time = training_end_time - training_start_time
@@ -77,11 +79,11 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
 
     # Sample from final round posterior
     print("\n Generating samples from final posterior:")
-    parameter_samples = sequential_posterior.sample((num_simulations_per_round,))
+    parameter_samples = sequential_posterior.sample((2000,))
     print("\n Samples generated")
-    rho_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:2000, 0].cpu().numpy()
-    tau_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:2000, 1].cpu().numpy()
-    latent_states_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:2000, 2:].cpu().numpy()
+    rho_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 0].cpu().numpy()
+    tau_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 1].cpu().numpy()
+    latent_states_samples_dict[f"round_{num_sequential_rounds}"] = parameter_samples[:, 2:].cpu().numpy()
 
     config = {"x_observed_ID": x_observed_ID,
               "num_sequential_rounds": num_sequential_rounds,
@@ -97,6 +99,8 @@ def main(x_observed_ID, num_sequential_rounds, num_simulations_per_round,
               "tau_scale": tau_scale,
               "tau_lower": tau_lower,
               "tau_upper": tau_upper,
+              "num_chains": num_chains, 
+              "num_workers": num_workers
               }
     
     if num_sequential_rounds == 1:
@@ -141,9 +145,12 @@ if __name__ == "__main__":
                         help="Number of sequential rounds")
     parser.add_argument("--num_simulations_per_round", type=int, default=5000,
                         help="Number of simulations per sequential round")
-    parser.add_argument("--mcmc_method", type=str, default="slice_np_vectorized")
+    parser.add_argument("--mcmc_method", type=str, default="nuts_pymc")
     parser.add_argument("--density_estimator", type=str, default="maf",
                         help="Type of density estimator to use in SBI")
+    parser.add_argument("--num_chains", type=int, default=2)
+    parser.add_argument("--num_workers", type=int, default=1)
+
     
     parser.add_argument("--rho_lower", type=float, default=0.0,
                         help="Lower bound of Uniform prior on rho")
@@ -175,4 +182,6 @@ if __name__ == "__main__":
         rho_lower=args.rho_lower,
         rho_upper=args.rho_upper,
         T=args.T,
+        num_chains=args.num_chains,
+        num_workers=args.num_workers
     )
